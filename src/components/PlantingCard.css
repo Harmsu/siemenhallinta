@@ -1,0 +1,210 @@
+.planting-card {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-left: 4px solid var(--primary);
+}
+
+.planting-card.planting-seedling {
+  border-left-color: #81d4fa;
+}
+
+.planting-card.planting-planted_ground {
+  border-left-color: #a1887f;
+}
+
+.planting-card.planting-planted_greenhouse {
+  border-left-color: #aed581;
+}
+
+.planting-card.planting-harvested {
+  border-left-color: var(--secondary);
+  opacity: 0.8;
+}
+
+.planting-card.planting-failed {
+  border-left-color: #e57373;
+  opacity: 0.7;
+}
+
+.planting-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-seedling {
+  background: #e1f5fe;
+  color: #0277bd;
+}
+
+.status-planted_ground {
+  background: #efebe9;
+  color: #5d4037;
+}
+
+.status-planted_greenhouse {
+  background: #f1f8e9;
+  color: #558b2f;
+}
+
+.status-active {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-harvested {
+  background: #fff8e1;
+  color: #f57f17;
+}
+
+.status-failed {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.planting-card-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.planting-seed {
+  margin: 0 0 0.25rem 0;
+  color: var(--text);
+  font-size: 1.1rem;
+}
+
+.planting-location {
+  margin: 0 0 0.75rem 0;
+  color: var(--text-light);
+  font-size: 0.9rem;
+}
+
+.planting-details {
+  margin-bottom: 0.75rem;
+}
+
+.detail-row {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.detail-label {
+  color: var(--text-light);
+}
+
+.planting-notes {
+  margin: 0 0 1rem 0;
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  padding: 0.5rem;
+  background: var(--background);
+  border-radius: 6px;
+}
+
+.care-log-section {
+  border-top: 1px solid #eee;
+  padding-top: 0.75rem;
+}
+
+.care-log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.btn-toggle-logs {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
+  font-weight: 500;
+}
+
+.btn-toggle-logs:hover {
+  color: var(--primary);
+}
+
+.btn-add-log {
+  background: none;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-add-log:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.care-log-list {
+  margin-top: 0.5rem;
+}
+
+.no-logs {
+  color: var(--text-light);
+  font-size: 0.85rem;
+  font-style: italic;
+  margin: 0;
+}
+
+.care-log-entry {
+  padding: 0.5rem;
+  background: var(--background);
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+}
+
+.care-log-entry:last-child {
+  margin-bottom: 0;
+}
+
+.log-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.log-type {
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--primary);
+}
+
+.log-date {
+  color: var(--text-light);
+  font-size: 0.8rem;
+}
+
+.btn-delete-log {
+  margin-left: auto;
+  font-size: 1.2rem;
+  padding: 0;
+  line-height: 1;
+}
+
+.log-notes {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.85rem;
+  color: var(--text);
+}

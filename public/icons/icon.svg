@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#2d5a27"/>
+  <g fill="#ffffff">
+    <!-- Seedling -->
+    <ellipse cx="256" cy="380" rx="80" ry="30" opacity="0.3"/>
+    <path d="M256 360 L256 240" stroke="#ffffff" stroke-width="24" stroke-linecap="round"/>
+    <!-- Left leaf -->
+    <path d="M256 280 Q200 260 180 200 Q220 220 256 260" fill="#ffffff"/>
+    <!-- Right leaf -->
+    <path d="M256 240 Q312 220 332 160 Q292 180 256 220" fill="#ffffff"/>
+    <!-- Seed -->
+    <ellipse cx="256" cy="400" rx="40" ry="25" fill="#d4a574"/>
+  </g>
+</svg>
