@@ -1,0 +1,66 @@
+.location-card {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.location-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.location-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.sun-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.sun-aurinkoinen {
+  background: #fff8e1;
+  color: #f57f17;
+}
+
+.sun-puolivarjo {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.sun-varjo {
+  background: #eceff1;
+  color: #546e7a;
+}
+
+.location-card-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.location-name {
+  margin: 0 0 0.5rem 0;
+  color: var(--text);
+  font-size: 1.25rem;
+}
+
+.location-soil {
+  margin: 0 0 0.75rem 0;
+  color: var(--text-light);
+  font-size: 0.9rem;
+}
+
+.location-description {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
