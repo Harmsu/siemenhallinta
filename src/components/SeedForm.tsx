@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Seed, SeedCategory, Subcategory } from '../types';
 import { CATEGORY_LABELS, MONTH_NAMES } from '../types';
+import { supabase } from '../lib/supabase';
 import './SeedForm.css';
 
 interface SeedFormProps {
@@ -14,8 +15,7 @@ interface SeedFormProps {
 
 const CATEGORIES: SeedCategory[] = ['vihannekset', 'yrtit', 'kukat', 'hedelmät', 'marjat'];
 
-// Pakkaa kuva pienemmäksi
-async function compressImage(file: File, maxWidth = 800, quality = 0.7): Promise<string> {
+async function compressImageToBlob(file: File, maxWidth = 800, quality = 0.7): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -23,27 +23,19 @@ async function compressImage(file: File, maxWidth = 800, quality = 0.7): Promise
       img.onload = () => {
         const canvas = document.createElement('canvas');
         let { width, height } = img;
-
-        // Skaalaa kuva jos se on liian suuri
         if (width > maxWidth) {
           height = (height * maxWidth) / width;
           width = maxWidth;
         }
-
         canvas.width = width;
         canvas.height = height;
-
         const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Canvas context not available'));
-          return;
-        }
-
+        if (!ctx) { reject(new Error('Canvas context not available')); return; }
         ctx.drawImage(img, 0, 0, width, height);
-
-        // Muunna JPEG-muotoon pakkauksella
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-        resolve(compressedDataUrl);
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('Failed to create blob'));
+        }, 'image/jpeg', quality);
       };
       img.onerror = () => reject(new Error('Failed to load image'));
       img.src = e.target?.result as string;
@@ -109,14 +101,17 @@ export function SeedForm({ seed, subcategories, onSave, onAddSubcategory, onDele
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      try {
-        const compressedImage = await compressImage(file);
-        setImageUrl(compressedImage);
-      } catch (err) {
-        console.error('Error compressing image:', err);
-        alert('Virhe kuvan käsittelyssä');
-      }
+    if (!file) return;
+    try {
+      const blob = await compressImageToBlob(file);
+      const fileName = `${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, '_')}`;
+      const { data, error } = await supabase.storage.from('seed-images').upload(fileName, blob, { contentType: 'image/jpeg' });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from('seed-images').getPublicUrl(data.path);
+      setImageUrl(publicUrl);
+    } catch (err) {
+      console.error('Error uploading image:', err);
+      alert('Virhe kuvan latauksessa');
     }
   };
 

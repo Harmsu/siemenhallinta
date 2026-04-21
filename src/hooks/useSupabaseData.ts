@@ -177,9 +177,14 @@ export function useSupabaseData() {
   };
 
   const deleteSeed = async (id: string) => {
+    const seed = seeds.find((s) => s.id === id);
     const { error } = await supabase.from('seeds').delete().eq('id', id);
     if (error) throw error;
     setSeeds((prev) => prev.filter((s) => s.id !== id));
+    if (seed?.imageUrl && seed.imageUrl.includes('seed-images')) {
+      const path = seed.imageUrl.split('/seed-images/')[1];
+      if (path) await supabase.storage.from('seed-images').remove([path]);
+    }
   };
 
   // Istutuspaikat
