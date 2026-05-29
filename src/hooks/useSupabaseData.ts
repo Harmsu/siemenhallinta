@@ -62,6 +62,7 @@ function dbToPlanting(row: any): Planting {
     locationId: row.location_id,
     plantedDate: row.planted_date,
     quantity: row.quantity,
+    currentQuantity: row.current_quantity ?? row.quantity,
     notes: row.notes || '',
     status: row.status,
     createdAt: row.created_at,
@@ -74,6 +75,7 @@ function plantingToDb(planting: Omit<Planting, 'id' | 'createdAt'>) {
     location_id: planting.locationId,
     planted_date: planting.plantedDate,
     quantity: planting.quantity,
+    current_quantity: planting.currentQuantity,
     notes: planting.notes || null,
     status: planting.status,
   };
@@ -86,6 +88,7 @@ function dbToCareLog(row: any): CareLogEntry {
     date: row.date,
     type: row.type,
     notes: row.notes || '',
+    quantityAfter: row.quantity_after ?? undefined,
     createdAt: row.created_at,
   };
 }
@@ -96,6 +99,7 @@ function careLogToDb(entry: Omit<CareLogEntry, 'id' | 'createdAt'>) {
     date: entry.date,
     type: entry.type,
     notes: entry.notes || null,
+    quantity_after: entry.quantityAfter ?? null,
   };
 }
 
@@ -228,7 +232,7 @@ export function useSupabaseData() {
     return dbToPlanting(data);
   };
 
-  const updatePlanting = async (id: string, planting: Omit<Planting, 'id' | 'createdAt'>) => {
+  const updatePlanting = async (id: string, planting: Omit<Planting, 'id' | 'createdAt'>, lossReason?: string) => {
     const { data, error } = await supabase
       .from('plantings')
       .update(plantingToDb(planting))
@@ -237,6 +241,24 @@ export function useSupabaseData() {
       .single();
     if (error) throw error;
     setPlantings((prev) => prev.map((p) => (p.id === id ? dbToPlanting(data) : p)));
+
+    if (lossReason && planting.currentQuantity < planting.quantity) {
+      const { data: logData, error: logError } = await supabase
+        .from('care_logs')
+        .insert({
+          planting_id: id,
+          date: new Date().toISOString().split('T')[0],
+          type: 'loss',
+          notes: lossReason,
+          quantity_after: planting.currentQuantity,
+        })
+        .select()
+        .single();
+      if (logError) throw logError;
+      if (logData) {
+        setCareLogs((prev) => [...prev, dbToCareLog(logData)]);
+      }
+    }
   };
 
   const deletePlanting = async (id: string) => {

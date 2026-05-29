@@ -10,7 +10,7 @@ interface CareLogFormProps {
   onCancel: () => void;
 }
 
-const CARE_TYPES: CareType[] = ['watering', 'fertilizing', 'pruning', 'harvesting', 'pest_control', 'other'];
+const CARE_TYPES: CareType[] = ['watering', 'fertilizing', 'pruning', 'harvesting', 'pest_control', 'note', 'improvement', 'other'];
 
 export function CareLogForm({ plantingId, initialDate, onSave, onCancel }: CareLogFormProps) {
   const [date, setDate] = useState(initialDate || new Date().toISOString().split('T')[0]);

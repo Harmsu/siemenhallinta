@@ -191,6 +191,7 @@ export function MainApp({ onLogout }: MainAppProps) {
         locationId,
         plantedDate: new Date().toISOString().split('T')[0],
         quantity: 1,
+        currentQuantity: 1,
         notes: '',
         status: 'active',
       });
@@ -234,12 +235,13 @@ export function MainApp({ onLogout }: MainAppProps) {
   };
 
   // Istutusten käsittelijät
-  const handleSavePlanting = async (plantingData: Omit<Planting, 'id' | 'createdAt'> & { id?: string }) => {
+  const handleSavePlanting = async (plantingData: Omit<Planting, 'id' | 'createdAt'> & { id?: string; lossReason?: string }) => {
+    const { lossReason, ...data } = plantingData;
     try {
-      if (plantingData.id) {
-        await updatePlanting(plantingData.id, plantingData);
+      if (data.id) {
+        await updatePlanting(data.id, data, lossReason);
       } else {
-        await addPlanting(plantingData);
+        await addPlanting({ ...data, currentQuantity: data.quantity });
       }
       setIsPlantingFormOpen(false);
       setEditingPlanting(null);
@@ -280,6 +282,7 @@ export function MainApp({ onLogout }: MainAppProps) {
         locationId: planting.locationId,
         plantedDate: nextYearDateStr,
         quantity: planting.quantity,
+        currentQuantity: planting.quantity,
         notes: planting.notes,
         status: 'seedling',
       });

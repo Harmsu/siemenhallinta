@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local Netlify folder
+.netlify
+
+# Ympäristömuuttujat (sisältää salaiset avaimet - ÄLÄ commitoi)
+# .env.local on jo katettu yllä olevalla *.local -säännöllä
+.env

@@ -8,7 +8,7 @@ interface PlantingFormProps {
   seeds: Seed[];
   locations: PlantingLocation[];
   initialDate?: string;
-  onSave: (planting: Omit<Planting, 'id' | 'createdAt'> & { id?: string }) => void;
+  onSave: (planting: Omit<Planting, 'id' | 'createdAt'> & { id?: string; lossReason?: string }) => void;
   onCancel: () => void;
 }
 
@@ -19,8 +19,12 @@ export function PlantingForm({ planting, seeds, locations, initialDate, onSave, 
   const [locationId, setLocationId] = useState('');
   const [plantedDate, setPlantedDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
   const [quantity, setQuantity] = useState(1);
+  const [currentQuantity, setCurrentQuantity] = useState(1);
+  const [lossReason, setLossReason] = useState('');
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState<PlantingStatus>('active');
+
+  const isEditing = !!planting?.id;
 
   useEffect(() => {
     if (planting) {
@@ -28,10 +32,14 @@ export function PlantingForm({ planting, seeds, locations, initialDate, onSave, 
       setLocationId(planting.locationId);
       setPlantedDate(planting.plantedDate.split('T')[0]);
       setQuantity(planting.quantity);
+      setCurrentQuantity(planting.currentQuantity);
       setNotes(planting.notes);
       setStatus(planting.status);
+      setLossReason('');
     }
   }, [planting]);
+
+  const showLossReason = isEditing && currentQuantity < quantity;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,8 +49,10 @@ export function PlantingForm({ planting, seeds, locations, initialDate, onSave, 
       locationId,
       plantedDate,
       quantity,
+      currentQuantity: isEditing ? currentQuantity : quantity,
       notes,
       status,
+      lossReason: showLossReason ? lossReason : undefined,
     });
   };
 
@@ -55,7 +65,7 @@ export function PlantingForm({ planting, seeds, locations, initialDate, onSave, 
   return (
     <div className="planting-form-overlay">
       <form className="planting-form" onSubmit={handleSubmit}>
-        <h2>{planting?.id ? 'Muokkaa istutusta' : 'Lisää uusi istutus'}</h2>
+        <h2>{isEditing ? 'Muokkaa istutusta' : 'Lisää uusi istutus'}</h2>
 
         <div className="form-group">
           <label htmlFor="seedId">Siemen</label>
@@ -104,16 +114,47 @@ export function PlantingForm({ planting, seeds, locations, initialDate, onSave, 
           </div>
 
           <div className="form-group">
-            <label htmlFor="quantity">Määrä (kpl)</label>
+            <label htmlFor="quantity">{isEditing ? 'Alkuperäinen määrä (kpl)' : 'Määrä (kpl)'}</label>
             <input
               id="quantity"
               type="number"
               min="0"
               value={quantity}
               onChange={(e) => setQuantity(Number(e.target.value))}
+              readOnly={isEditing}
+              style={isEditing ? { background: '#f5f5f5', color: '#888' } : undefined}
             />
           </div>
         </div>
+
+        {isEditing && (
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="currentQuantity">Jäljellä (kpl)</label>
+              <input
+                id="currentQuantity"
+                type="number"
+                min="0"
+                max={quantity}
+                value={currentQuantity}
+                onChange={(e) => setCurrentQuantity(Number(e.target.value))}
+              />
+            </div>
+          </div>
+        )}
+
+        {showLossReason && (
+          <div className="form-group">
+            <label htmlFor="lossReason">Syy hävikin kirjaamiselle</label>
+            <textarea
+              id="lossReason"
+              value={lossReason}
+              onChange={(e) => setLossReason(e.target.value)}
+              rows={2}
+              placeholder="Esim. tuholaisia, kuivuus, pakkanen..."
+            />
+          </div>
+        )}
 
         <div className="form-group">
           <label htmlFor="status">Tila</label>
@@ -146,7 +187,7 @@ export function PlantingForm({ planting, seeds, locations, initialDate, onSave, 
             Peruuta
           </button>
           <button type="submit" className="btn-primary">
-            {planting?.id ? 'Tallenna' : 'Lisää'}
+            {isEditing ? 'Tallenna' : 'Lisää'}
           </button>
         </div>
       </form>

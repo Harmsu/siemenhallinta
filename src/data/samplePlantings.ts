@@ -7,6 +7,7 @@ export const samplePlantings: Planting[] = [
     locationId: '1', // Kasvihuone
     plantedDate: '2024-04-15',
     quantity: 6,
+    currentQuantity: 6,
     notes: 'Esikasvatettu ikkunalaudalla maaliskuussa',
     status: 'active',
     createdAt: new Date().toISOString(),
@@ -17,6 +18,7 @@ export const samplePlantings: Planting[] = [
     locationId: '2', // Parvekelaatikot
     plantedDate: '2024-05-01',
     quantity: 4,
+    currentQuantity: 4,
     notes: '',
     status: 'active',
     createdAt: new Date().toISOString(),
