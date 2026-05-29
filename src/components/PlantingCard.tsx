@@ -36,6 +36,8 @@ export function PlantingCard({
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
 
+  const latestLoss = sortedLogs.find((log) => log.type === 'loss' && log.notes);
+
   return (
     <div className={`planting-card planting-${planting.status}`}>
       <div className="planting-card-header">
@@ -66,7 +68,17 @@ export function PlantingCard({
         {planting.quantity > 0 && (
           <div className="detail-row">
             <span className="detail-label">Määrä:</span>
-            <span>{planting.quantity} kpl</span>
+            <span>
+              {planting.currentQuantity < planting.quantity
+                ? `${planting.currentQuantity}/${planting.quantity} kpl jäljellä`
+                : `${planting.quantity} kpl`}
+            </span>
+          </div>
+        )}
+        {latestLoss && (
+          <div className="detail-row">
+            <span className="detail-label">Hävikin syy:</span>
+            <span className="loss-reason">{latestLoss.notes}</span>
           </div>
         )}
       </div>
@@ -109,6 +121,9 @@ export function PlantingCard({
                       ×
                     </button>
                   </div>
+                  {log.quantityAfter !== undefined && (
+                    <p className="log-quantity">Jäljellä: {log.quantityAfter} kpl</p>
+                  )}
                   {log.notes && <p className="log-notes">{log.notes}</p>}
                 </div>
               ))

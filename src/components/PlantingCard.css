@@ -105,6 +105,11 @@
   color: var(--text-light);
 }
 
+.loss-reason {
+  flex: 1;
+  color: var(--text);
+}
+
 .planting-notes {
   margin: 0 0 1rem 0;
   color: var(--text);

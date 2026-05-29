@@ -81,6 +81,7 @@ export interface Planting {
   locationId: string;
   plantedDate: string;
   quantity: number;
+  currentQuantity: number;
   notes: string;
   status: PlantingStatus;
   createdAt: string;
@@ -111,10 +112,11 @@ export interface CareLogEntry {
   date: string;
   type: CareType;
   notes: string;
+  quantityAfter?: number;
   createdAt: string;
 }
 
-export type CareType = 'watering' | 'fertilizing' | 'pruning' | 'harvesting' | 'pest_control' | 'other';
+export type CareType = 'watering' | 'fertilizing' | 'pruning' | 'harvesting' | 'pest_control' | 'loss' | 'note' | 'improvement' | 'other';
 
 export const CARE_TYPE_LABELS: Record<CareType, string> = {
   watering: 'Kastelu',
@@ -122,5 +124,8 @@ export const CARE_TYPE_LABELS: Record<CareType, string> = {
   pruning: 'Leikkaus',
   harvesting: 'Sadonkorjuu',
   pest_control: 'Tuholaistorjunta',
+  loss: 'Hävikki',
+  note: 'Muistiinpano',
+  improvement: 'Parannusehdotus',
   other: 'Muu',
 };

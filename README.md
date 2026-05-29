@@ -26,6 +26,10 @@ Siementen ja kasvien hallintasovellus. Seuraa siemeniä, istutuksia ja hoitotoim
 # Asenna riippuvuudet
 npm install
 
+# Luo ympäristömuuttujatiedosto
+cp .env.example .env.local
+# Täytä .env.local-tiedostoon omat Supabase-arvosi
+
 # Käynnistä kehityspalvelin
 npm run dev
 
@@ -36,9 +40,26 @@ npm run test
 npm run build
 ```
 
-## Ympäristö
+## Ympäristömuuttujat
 
-Sovellus käyttää Supabasea backendina. Supabase-konfiguraatio on tiedostossa `src/lib/supabase.ts`.
+Kopioi `.env.example` tiedostoksi `.env.local` ja täytä arvot:
+
+```
+VITE_SUPABASE_URL=https://xxxxxxxxxxxxxxxxxxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGci...
+```
+
+Arvot löytyvät Supabase-projektin asetuksista: **Project Settings → API**.
+
+## Uusi asennus
+
+Katso yksityiskohtainen ohje tiedostosta `ASENNUSOHJE.md`.
+
+Tietokantarakenne löytyy tiedostosta `schema.sql` — aja se Supabasen SQL Editorissa.
+
+## Monikäyttäjätuki
+
+Sovellus tukee useita käyttäjiä saman Supabase-projektin alla. Jokainen käyttäjä näkee vain oman datansa (Row Level Security). Uuden käyttäjän lisääminen: Supabase → Authentication → Users → Add user.
 
 ### Tietokantataulut
 
