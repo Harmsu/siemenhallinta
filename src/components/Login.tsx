@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
 import './Login.css';
 
 interface LoginProps {
-  onLogin: () => void;
+  onSignIn: (email: string, password: string) => Promise<void>;
 }
 
-export function Login({ onLogin }: LoginProps) {
+export function Login({ onSignIn }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,16 +16,11 @@ export function Login({ onLogin }: LoginProps) {
     setLoading(true);
     setError('');
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
+    try {
+      await onSignIn(email, password);
+    } catch {
       setError('Virheellinen sähköposti tai salasana');
       setLoading(false);
-    } else {
-      onLogin();
     }
   };
 

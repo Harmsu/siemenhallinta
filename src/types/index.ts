@@ -2,13 +2,34 @@ export interface Seed {
   id: string;
   nameFi: string;
   variety: string;
-  category: SeedCategory;
+  // Siemenillä yksi SeedCategory-arvoista; sipuleilla kukkasipulin tyyppi (esim. "Tulppaani"),
+  // jotka ovat käyttäjän itse lisäämiä eikä siten kiinteä union-tyyppi
+  category: string;
   subcategory: string;
+  categoryType: CategoryType;
+  plantingDepthCm?: number;
   plantingTime: PlantingTime;
   growingInstructions: string;
   imageUrl: string;
   createdAt: string;
 }
+
+export type CategoryType = 'siemen' | 'sipuli';
+
+// Sipulien kategoriat (esim. "Tulppaani") tallennetaan alakategorioina tämän kiinteän "ankkurin"
+// alle - oma erillinen arvo, jotta ne eivät sekoitu tavallisten SeedCategory-arvojen alakategorioihin.
+// HUOM: sama vakio on myös server/scripts/create-user.js:ssä (erillinen backend-koodikanta) - pidä samana.
+export const BULB_TYPE_ANCHOR = '__sipulit__';
+
+// Siementen pääkategoriat (Vihannekset, Yrtit, ...) ovat myös käyttäjän muokattavissa/poistettavissa -
+// tallennetaan samalla mekanismilla alakategorioina tämän ankkurin alle.
+// HUOM: sama vakio on myös server/scripts/create-user.js:ssä - pidä samana.
+export const CATEGORY_ANCHOR = '__kategoriat__';
+
+export const CATEGORY_TYPE_LABELS: Record<CategoryType, string> = {
+  siemen: 'Siemen',
+  sipuli: 'Sipuli',
+};
 
 export type SeedCategory =
   | 'vihannekset'
@@ -31,10 +52,16 @@ export const CATEGORY_LABELS: Record<SeedCategory, string> = {
   marjat: 'Marjat',
 };
 
+// Sipulien kategoria on käyttäjän itse lisäämä vapaa teksti (esim. "Tulppaani"),
+// joten sille ei ole valmista suomennosta CATEGORY_LABELS-taulukossa
+export function getCategoryLabel(category: string): string {
+  return CATEGORY_LABELS[category as SeedCategory] ?? category;
+}
+
 // Alakategoria
 export interface Subcategory {
   id: string;
-  category: SeedCategory;
+  category: string;
   name: string;
   createdAt: string;
 }

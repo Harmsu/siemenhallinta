@@ -1,153 +1,98 @@
 -- =============================================================
--- Harmsun siemenet - Tietokantarakenne (uusi asennus)
--- Aja tämä kokonaisuudessaan Supabase SQL Editorissa
+-- Harmsun siemenet - Tietokantarakenne (UpCloud Postgres)
+-- Aja tämä kokonaisuudessaan tuotantokantaan (ks. server/database.js:n
+-- initDB, joka ajaa saman rakenteen automaattisesti paikallista kehitystä varten)
 -- =============================================================
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- -------------------------------------------------------------
--- 1. TAULUT
--- user_id asetetaan automaattisesti kirjautuneen käyttäjän mukaan
--- -------------------------------------------------------------
+-- Käyttäjät
+CREATE TABLE users (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email         TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 -- Siemenet
 CREATE TABLE seeds (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES auth.users(id) DEFAULT auth.uid(),
-  name_fi TEXT NOT NULL,
-  variety TEXT,
-  category TEXT NOT NULL CHECK (category IN ('vihannekset','yrtit','kukat','hedelmät','marjat')),
-  subcategory TEXT,
-  planting_start_month INTEGER NOT NULL CHECK (planting_start_month BETWEEN 1 AND 12),
-  planting_end_month INTEGER NOT NULL CHECK (planting_end_month BETWEEN 1 AND 12),
-  planting_indoor BOOLEAN DEFAULT false,
-  growing_instructions TEXT,
-  image_url TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id               UUID NOT NULL REFERENCES users(id),
+  name_fi               TEXT NOT NULL,
+  variety               TEXT,
+  -- Siemenillä yksi 5 kiinteästä kategoriasta; sipuleilla kukkasipulin tyyppi (esim. "Tulppaani"),
+  -- joita käyttäjä voi itse lisätä - siksi EI CHECK-rajoitusta (validointi UI:ssa)
+  category              TEXT NOT NULL,
+  -- Siemenillä vapaa alakategoria; sipuleilla lajikeryhmä kategorian sisällä (esim. "Darwin-tulppaani")
+  subcategory           TEXT,
+  category_type         TEXT NOT NULL DEFAULT 'siemen' CHECK (category_type IN ('siemen','sipuli')),
+  planting_depth_cm     NUMERIC,
+  planting_start_month  INTEGER NOT NULL CHECK (planting_start_month BETWEEN 1 AND 12),
+  planting_end_month    INTEGER NOT NULL CHECK (planting_end_month BETWEEN 1 AND 12),
+  planting_indoor       BOOLEAN DEFAULT false,
+  growing_instructions  TEXT,
+  image_url             TEXT,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE INDEX idx_seeds_user ON seeds(user_id);
 
 -- Alakategoriat
 CREATE TABLE subcategories (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES auth.users(id) DEFAULT auth.uid(),
-  category TEXT NOT NULL CHECK (category IN ('vihannekset','yrtit','kukat','hedelmät','marjat')),
-  name TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL REFERENCES users(id),
+  category   TEXT NOT NULL,
+  name       TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(user_id, category, name)
 );
 
+CREATE INDEX idx_subcategories_user ON subcategories(user_id);
+
 -- Istutuspaikat
 CREATE TABLE locations (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES auth.users(id) DEFAULT auth.uid(),
-  name TEXT NOT NULL,
-  description TEXT,
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      UUID NOT NULL REFERENCES users(id),
+  name         TEXT NOT NULL,
+  description  TEXT,
   sun_exposure TEXT NOT NULL CHECK (sun_exposure IN ('aurinkoinen','puolivarjo','varjo')),
-  soil_type TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  soil_type    TEXT,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE INDEX idx_locations_user ON locations(user_id);
 
 -- Istutukset
+-- HUOM: planted_date on TEXT (YYYY-MM-DD), ei DATE — Postgresin DATE + Node pg:n
+-- Date-olion toISOString()-muunnos siirtää päivän taaksepäin kun palvelin on UTC:n
+-- edellä (havaittu uintiharjoittelu-migraatiossa).
 CREATE TABLE plantings (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES auth.users(id) DEFAULT auth.uid(),
-  seed_id UUID NOT NULL REFERENCES seeds(id) ON DELETE CASCADE,
-  location_id UUID NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
-  planted_date DATE NOT NULL,
-  quantity INTEGER NOT NULL DEFAULT 1,
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id          UUID NOT NULL REFERENCES users(id),
+  seed_id          UUID NOT NULL REFERENCES seeds(id) ON DELETE CASCADE,
+  location_id      UUID NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+  planted_date     TEXT NOT NULL,
+  quantity         INTEGER NOT NULL DEFAULT 1,
   current_quantity INTEGER,
-  notes TEXT,
-  status TEXT NOT NULL DEFAULT 'seedling'
+  notes            TEXT,
+  status           TEXT NOT NULL DEFAULT 'seedling'
     CHECK (status IN ('seedling','planted_ground','planted_greenhouse','active','harvested','failed')),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Hoitoloki
+CREATE INDEX idx_plantings_user ON plantings(user_id);
+
+-- Hoitoloki (date on myös TEXT, sama syy kuin plantings.planted_date)
 CREATE TABLE care_logs (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES auth.users(id) DEFAULT auth.uid(),
-  planting_id UUID NOT NULL REFERENCES plantings(id) ON DELETE CASCADE,
-  date DATE NOT NULL,
-  type TEXT NOT NULL
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id        UUID NOT NULL REFERENCES users(id),
+  planting_id    UUID NOT NULL REFERENCES plantings(id) ON DELETE CASCADE,
+  date           TEXT NOT NULL,
+  type           TEXT NOT NULL
     CHECK (type IN ('watering','fertilizing','pruning','harvesting','pest_control','loss','note','improvement','other')),
-  notes TEXT,
+  notes          TEXT,
   quantity_after INTEGER,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-
--- -------------------------------------------------------------
--- 2. ROW LEVEL SECURITY – jokainen näkee vain oman datansa
--- -------------------------------------------------------------
-
-ALTER TABLE seeds ENABLE ROW LEVEL SECURITY;
-ALTER TABLE subcategories ENABLE ROW LEVEL SECURITY;
-ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE plantings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE care_logs ENABLE ROW LEVEL SECURITY;
-
--- seeds
-CREATE POLICY "Oma data: siemenet SELECT"
-  ON seeds FOR SELECT TO authenticated USING (user_id = auth.uid());
-CREATE POLICY "Oma data: siemenet INSERT"
-  ON seeds FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "Oma data: siemenet UPDATE"
-  ON seeds FOR UPDATE TO authenticated USING (user_id = auth.uid());
-CREATE POLICY "Oma data: siemenet DELETE"
-  ON seeds FOR DELETE TO authenticated USING (user_id = auth.uid());
-
--- subcategories
-CREATE POLICY "Oma data: alakategoriat SELECT"
-  ON subcategories FOR SELECT TO authenticated USING (user_id = auth.uid());
-CREATE POLICY "Oma data: alakategoriat INSERT"
-  ON subcategories FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "Oma data: alakategoriat DELETE"
-  ON subcategories FOR DELETE TO authenticated USING (user_id = auth.uid());
-
--- locations
-CREATE POLICY "Oma data: paikat SELECT"
-  ON locations FOR SELECT TO authenticated USING (user_id = auth.uid());
-CREATE POLICY "Oma data: paikat INSERT"
-  ON locations FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "Oma data: paikat UPDATE"
-  ON locations FOR UPDATE TO authenticated USING (user_id = auth.uid());
-CREATE POLICY "Oma data: paikat DELETE"
-  ON locations FOR DELETE TO authenticated USING (user_id = auth.uid());
-
--- plantings
-CREATE POLICY "Oma data: istutukset SELECT"
-  ON plantings FOR SELECT TO authenticated USING (user_id = auth.uid());
-CREATE POLICY "Oma data: istutukset INSERT"
-  ON plantings FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "Oma data: istutukset UPDATE"
-  ON plantings FOR UPDATE TO authenticated USING (user_id = auth.uid());
-CREATE POLICY "Oma data: istutukset DELETE"
-  ON plantings FOR DELETE TO authenticated USING (user_id = auth.uid());
-
--- care_logs
-CREATE POLICY "Oma data: hoitoloki SELECT"
-  ON care_logs FOR SELECT TO authenticated USING (user_id = auth.uid());
-CREATE POLICY "Oma data: hoitoloki INSERT"
-  ON care_logs FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-CREATE POLICY "Oma data: hoitoloki DELETE"
-  ON care_logs FOR DELETE TO authenticated USING (user_id = auth.uid());
-
-
--- -------------------------------------------------------------
--- 3. STORAGE BUCKET (kuville)
--- -------------------------------------------------------------
-
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('seed-images', 'seed-images', true)
-ON CONFLICT DO NOTHING;
-
-CREATE POLICY "Kirjautuneet voivat ladata kuvia"
-  ON storage.objects FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'seed-images');
-
-CREATE POLICY "Kaikki voivat katsella kuvia"
-  ON storage.objects FOR SELECT TO public
-  USING (bucket_id = 'seed-images');
-
-CREATE POLICY "Kirjautuneet voivat poistaa kuvia"
-  ON storage.objects FOR DELETE TO authenticated
-  USING (bucket_id = 'seed-images');
+CREATE INDEX idx_care_logs_user ON care_logs(user_id);

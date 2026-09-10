@@ -1,19 +1,27 @@
-import type { SeedCategory, Subcategory } from '../types';
-import { CATEGORY_LABELS } from '../types';
+import type { Subcategory } from '../types';
+import { getCategoryLabel, CATEGORY_ANCHOR } from '../types';
 import './CategoryFilter.css';
 
 interface CategoryFilterProps {
-  selected: SeedCategory | null;
+  selected: string | null;
   selectedSubcategory: string | null;
   subcategories: Subcategory[];
-  onChange: (category: SeedCategory | null) => void;
+  onChange: (category: string | null) => void;
   onSubcategoryChange: (subcategory: string | null) => void;
 }
 
-const CATEGORIES: SeedCategory[] = ['vihannekset', 'yrtit', 'kukat', 'hedelmät', 'marjat'];
+export function CategoryFilter({
+  selected,
+  selectedSubcategory,
+  subcategories,
+  onChange,
+  onSubcategoryChange,
+}: CategoryFilterProps) {
+  const categoryOptions = subcategories
+    .filter((s) => s.category === CATEGORY_ANCHOR)
+    .sort((a, b) => a.name.localeCompare(b.name, 'fi'));
 
-export function CategoryFilter({ selected, selectedSubcategory, subcategories, onChange, onSubcategoryChange }: CategoryFilterProps) {
-  const handleCategoryClick = (category: SeedCategory | null) => {
+  const handleCategoryClick = (category: string | null) => {
     onChange(category);
     onSubcategoryChange(null);
   };
@@ -34,13 +42,13 @@ export function CategoryFilter({ selected, selectedSubcategory, subcategories, o
         >
           Kaikki
         </button>
-        {CATEGORIES.map((category) => (
+        {categoryOptions.map((opt) => (
           <button
-            key={category}
-            className={`filter-btn ${selected === category ? 'active' : ''}`}
-            onClick={() => handleCategoryClick(category)}
+            key={opt.id}
+            className={`filter-btn ${selected === opt.name ? 'active' : ''}`}
+            onClick={() => handleCategoryClick(opt.name)}
           >
-            {CATEGORY_LABELS[category]}
+            {getCategoryLabel(opt.name)}
           </button>
         ))}
       </div>
@@ -50,7 +58,7 @@ export function CategoryFilter({ selected, selectedSubcategory, subcategories, o
             className={`filter-btn sub ${selectedSubcategory === null ? 'active' : ''}`}
             onClick={() => onSubcategoryChange(null)}
           >
-            Kaikki {CATEGORY_LABELS[selected!].toLowerCase()}
+            Kaikki {getCategoryLabel(selected!).toLowerCase()}
           </button>
           {categorySubcategories.map((sub) => (
             <button

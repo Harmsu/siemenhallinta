@@ -1,34 +1,13 @@
-import { useState, useEffect } from 'react';
-import type { User } from '@supabase/supabase-js';
-import { supabase } from './lib/supabase';
+import { useAuth } from './hooks/useAuth';
 import { Login } from './components/Login';
 import { MainApp } from './components/MainApp';
 import './App.css';
 
 function App() {
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-
-  // Tarkista kirjautumistila
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setAuthLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
+  const { user, loading, signIn, signOut } = useAuth();
 
   // Näytä lataus kun tarkistetaan kirjautumista
-  if (authLoading) {
+  if (loading) {
     return (
       <div className="app">
         <div className="loading">Ladataan...</div>
@@ -38,11 +17,11 @@ function App() {
 
   // Näytä kirjautumissivu jos ei kirjautunut
   if (!user) {
-    return <Login onLogin={() => {}} />;
+    return <Login onSignIn={signIn} />;
   }
 
   // Näytä pääsovellus kun kirjautunut
-  return <MainApp onLogout={handleLogout} />;
+  return <MainApp onLogout={signOut} />;
 }
 
 export default App;

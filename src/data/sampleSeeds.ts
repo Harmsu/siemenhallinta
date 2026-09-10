@@ -7,6 +7,7 @@ export const sampleSeeds: Seed[] = [
     variety: 'Black Cherry',
     category: 'vihannekset',
     subcategory: 'Tomaatti',
+    categoryType: 'siemen',
     plantingTime: {
       startMonth: 3,
       endMonth: 4,
@@ -22,6 +23,7 @@ export const sampleSeeds: Seed[] = [
     variety: 'Genovese',
     category: 'yrtit',
     subcategory: '',
+    categoryType: 'siemen',
     plantingTime: {
       startMonth: 4,
       endMonth: 5,
@@ -37,6 +39,7 @@ export const sampleSeeds: Seed[] = [
     variety: 'Nantes',
     category: 'vihannekset',
     subcategory: 'Porkkana',
+    categoryType: 'siemen',
     plantingTime: {
       startMonth: 5,
       endMonth: 6,
@@ -52,6 +55,7 @@ export const sampleSeeds: Seed[] = [
     variety: 'Mammoth',
     category: 'kukat',
     subcategory: '',
+    categoryType: 'siemen',
     plantingTime: {
       startMonth: 5,
       endMonth: 6,
@@ -67,6 +71,7 @@ export const sampleSeeds: Seed[] = [
     variety: 'Polka',
     category: 'marjat',
     subcategory: '',
+    categoryType: 'siemen',
     plantingTime: {
       startMonth: 4,
       endMonth: 5,
@@ -82,6 +87,7 @@ export const sampleSeeds: Seed[] = [
     variety: '',
     category: 'yrtit',
     subcategory: '',
+    categoryType: 'siemen',
     plantingTime: {
       startMonth: 5,
       endMonth: 7,

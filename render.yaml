@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: siemen-api
+    env: node
+    region: frankfurt
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: CLIENT_URL
+        value: https://siemenhallinta.netlify.app
+      - key: SFTP_HOST
+        sync: false
+      - key: SFTP_PORT
+        value: "22"
+      - key: SFTP_USERNAME
+        sync: false
+      - key: SFTP_PRIVATE_KEY
+        sync: false
+      - key: SFTP_REMOTE_DIR
+        sync: false

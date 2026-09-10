@@ -80,6 +80,28 @@
   color: #7b1fa2;
 }
 
+.category-type-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.planting-depth {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.planting-depth .label {
+  color: var(--text-light);
+}
+
 .seed-card-actions {
   display: flex;
   gap: 0.25rem;

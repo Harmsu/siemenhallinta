@@ -29,3 +29,6 @@ dist-ssr
 # Ympäristömuuttujat (sisältää salaiset avaimet - ÄLÄ commitoi)
 # .env.local on jo katettu yllä olevalla *.local -säännöllä
 .env
+
+# SFTP-avainpari (kuvatallennus) - ei koskaan gittiin
+server/.sftp-keys/

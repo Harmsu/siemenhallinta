@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
-import type { Seed, SeedCategory, PlantingLocation, Planting, CareLogEntry } from '../types';
+import type { Seed, CategoryType, PlantingLocation, Planting, CareLogEntry } from '../types';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { SeedList } from './SeedList';
 import { SeedForm } from './SeedForm';
 import { SearchBar } from './SearchBar';
 import { CategoryFilter } from './CategoryFilter';
+import { BulbCategoryFilter } from './BulbCategoryFilter';
 import { LocationList } from './LocationList';
 import { LocationForm } from './LocationForm';
 import { PlantingList } from './PlantingList';
@@ -13,7 +14,7 @@ import { CareLogForm } from './CareLogForm';
 import { Calendar } from './Calendar';
 import { Statistics } from './Statistics';
 
-type View = 'seeds' | 'locations' | 'plantings' | 'calendar' | 'statistics';
+type View = 'seeds' | 'bulbs' | 'locations' | 'plantings' | 'calendar' | 'statistics';
 
 interface MainAppProps {
   onLogout: () => void;
@@ -44,14 +45,19 @@ export function MainApp({ onLogout }: MainAppProps) {
     subcategories,
     addSubcategory,
     deleteSubcategory,
-  } = useSupabaseData();
+  } = useSupabaseData(true);
 
   // Siemenet UI state
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<SeedCategory | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [isSeedFormOpen, setIsSeedFormOpen] = useState(false);
   const [editingSeed, setEditingSeed] = useState<Seed | null>(null);
+
+  // Sipulit UI state
+  const [bulbSearchQuery, setBulbSearchQuery] = useState('');
+  const [selectedBulbType, setSelectedBulbType] = useState<string | null>(null);
+  const [selectedBulbVariety, setSelectedBulbVariety] = useState<string | null>(null);
 
   // Istutuspaikat UI state
   const [locationSearch, setLocationSearch] = useState('');
@@ -60,6 +66,7 @@ export function MainApp({ onLogout }: MainAppProps) {
 
   // Istutukset UI state
   const [plantingSearch, setPlantingSearch] = useState('');
+  const [selectedPlantingType, setSelectedPlantingType] = useState<CategoryType | null>(null);
   const [isPlantingFormOpen, setIsPlantingFormOpen] = useState(false);
   const [editingPlanting, setEditingPlanting] = useState<Planting | null>(null);
   const [plantingInitialDate, setPlantingInitialDate] = useState<string>('');
@@ -69,9 +76,11 @@ export function MainApp({ onLogout }: MainAppProps) {
   const [careLogPlantingId, setCareLogPlantingId] = useState<string>('');
   const [careLogInitialDate, setCareLogInitialDate] = useState<string>('');
 
-  // Siementen suodatus ja järjestys (aakkosjärjestys)
+  // Siementen suodatus ja järjestys (aakkosjärjestys) - vain categoryType 'siemen'
   const filteredSeeds = useMemo(() => {
     const filtered = seeds.filter((seed) => {
+      if (seed.categoryType !== 'siemen') return false;
+
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch =
         searchQuery === '' ||
@@ -95,6 +104,33 @@ export function MainApp({ onLogout }: MainAppProps) {
     });
   }, [seeds, searchQuery, selectedCategory, selectedSubcategory]);
 
+  // Sipulien suodatus ja järjestys - vain categoryType 'sipuli'
+  const filteredBulbs = useMemo(() => {
+    const filtered = seeds.filter((seed) => {
+      if (seed.categoryType !== 'sipuli') return false;
+
+      const searchLower = bulbSearchQuery.toLowerCase();
+      const matchesSearch =
+        bulbSearchQuery === '' ||
+        seed.nameFi.toLowerCase().includes(searchLower) ||
+        (seed.variety && seed.variety.toLowerCase().includes(searchLower));
+
+      const matchesType =
+        selectedBulbType === null || seed.category === selectedBulbType;
+
+      const matchesVariety =
+        selectedBulbVariety === null || seed.subcategory === selectedBulbVariety;
+
+      return matchesSearch && matchesType && matchesVariety;
+    });
+
+    return filtered.sort((a, b) => {
+      const nameA = `${a.nameFi} ${a.variety || ''}`.toLowerCase();
+      const nameB = `${b.nameFi} ${b.variety || ''}`.toLowerCase();
+      return nameA.localeCompare(nameB, 'fi');
+    });
+  }, [seeds, bulbSearchQuery, selectedBulbType, selectedBulbVariety]);
+
   // Istutuspaikkojen suodatus
   const filteredLocations = useMemo(() => {
     if (locationSearch === '') return locations;
@@ -106,18 +142,24 @@ export function MainApp({ onLogout }: MainAppProps) {
 
   // Istutusten suodatus
   const filteredPlantings = useMemo(() => {
-    if (plantingSearch === '') return plantings;
-    const searchLower = plantingSearch.toLowerCase();
     return plantings.filter((p) => {
       const seed = seeds.find((s) => s.id === p.seedId);
       const location = locations.find((l) => l.id === p.locationId);
-      return (
-        (seed?.nameFi.toLowerCase().includes(searchLower)) ||
-        (seed?.variety?.toLowerCase().includes(searchLower)) ||
-        (location?.name.toLowerCase().includes(searchLower))
-      );
+
+      const matchesType =
+        selectedPlantingType === null || seed?.categoryType === selectedPlantingType;
+
+      if (plantingSearch === '') return matchesType;
+
+      const searchLower = plantingSearch.toLowerCase();
+      const matchesSearch =
+        seed?.nameFi.toLowerCase().includes(searchLower) ||
+        seed?.variety?.toLowerCase().includes(searchLower) ||
+        location?.name.toLowerCase().includes(searchLower);
+
+      return matchesType && matchesSearch;
     });
-  }, [plantings, plantingSearch, seeds, locations]);
+  }, [plantings, plantingSearch, selectedPlantingType, seeds, locations]);
 
   // Siementen käsittelijät
   const handleSaveSeed = async (seedData: Omit<Seed, 'id' | 'createdAt'> & { id?: string }) => {
@@ -365,6 +407,12 @@ export function MainApp({ onLogout }: MainAppProps) {
             Siemenet
           </button>
           <button
+            className={`nav-tab ${activeView === 'bulbs' ? 'active' : ''}`}
+            onClick={() => setActiveView('bulbs')}
+          >
+            Sipulit
+          </button>
+          <button
             className={`nav-tab ${activeView === 'locations' ? 'active' : ''}`}
             onClick={() => setActiveView('locations')}
           >
@@ -425,6 +473,39 @@ export function MainApp({ onLogout }: MainAppProps) {
           </>
         )}
 
+        {activeView === 'bulbs' && (
+          <>
+            <div className="toolbar">
+              <div className="toolbar-left">
+                <SearchBar value={bulbSearchQuery} onChange={setBulbSearchQuery} />
+                <BulbCategoryFilter
+                  subcategories={subcategories}
+                  selectedType={selectedBulbType}
+                  selectedVariety={selectedBulbVariety}
+                  onTypeChange={setSelectedBulbType}
+                  onVarietyChange={setSelectedBulbVariety}
+                />
+              </div>
+              <button className="btn-add" onClick={() => setIsSeedFormOpen(true)}>
+                + Lisää sipuli
+              </button>
+            </div>
+
+            <p className="item-count">
+              Näytetään {filteredBulbs.length} / {seeds.filter((s) => s.categoryType === 'sipuli').length} sipulia
+            </p>
+
+            <SeedList
+              seeds={filteredBulbs}
+              locations={locations}
+              onEdit={handleEditSeed}
+              onDelete={handleDeleteSeed}
+              onCopy={handleCopySeed}
+              onQuickPlant={handleQuickPlant}
+            />
+          </>
+        )}
+
         {activeView === 'locations' && (
           <>
             <div className="toolbar">
@@ -453,6 +534,26 @@ export function MainApp({ onLogout }: MainAppProps) {
             <div className="toolbar">
               <div className="toolbar-left">
                 <SearchBar value={plantingSearch} onChange={setPlantingSearch} />
+                <div className="category-filter">
+                  <button
+                    className={`filter-btn ${selectedPlantingType === null ? 'active' : ''}`}
+                    onClick={() => setSelectedPlantingType(null)}
+                  >
+                    Kaikki
+                  </button>
+                  <button
+                    className={`filter-btn ${selectedPlantingType === 'siemen' ? 'active' : ''}`}
+                    onClick={() => setSelectedPlantingType('siemen')}
+                  >
+                    Siemenet
+                  </button>
+                  <button
+                    className={`filter-btn ${selectedPlantingType === 'sipuli' ? 'active' : ''}`}
+                    onClick={() => setSelectedPlantingType('sipuli')}
+                  >
+                    Sipulit
+                  </button>
+                </div>
               </div>
               <button className="btn-add" onClick={() => setIsPlantingFormOpen(true)}>
                 + Lisää istutus
@@ -501,6 +602,7 @@ export function MainApp({ onLogout }: MainAppProps) {
       {isSeedFormOpen && (
         <SeedForm
           seed={editingSeed}
+          defaultCategoryType={activeView === 'bulbs' ? 'sipuli' : 'siemen'}
           subcategories={subcategories}
           onSave={handleSaveSeed}
           onAddSubcategory={addSubcategory}

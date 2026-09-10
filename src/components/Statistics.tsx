@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { Planting, Seed, PlantingLocation, CareLogEntry } from '../types';
-import { CATEGORY_LABELS, PLANTING_STATUS_LABELS } from '../types';
+import { getCategoryLabel, PLANTING_STATUS_LABELS } from '../types';
 import './Statistics.css';
 
 interface StatisticsProps {
@@ -209,7 +209,7 @@ export function Statistics({ plantings, seeds, locations, careLogs }: Statistics
                     className={`stats-table-row clickable ${isExpanded ? 'expanded' : ''}`}
                     onClick={() => toggleSection(`cat-${cat}`)}
                   >
-                    <span>{CATEGORY_LABELS[cat as keyof typeof CATEGORY_LABELS] || cat}</span>
+                    <span>{getCategoryLabel(cat)}</span>
                     <span>{catPlantings.length}</span>
                     <span className="text-success">{harvested}</span>
                     <span className="text-failed">{failed}</span>
@@ -301,7 +301,7 @@ export function Statistics({ plantings, seeds, locations, careLogs }: Statistics
                   {seed.variety && <span className="unplanted-variety"> ({seed.variety})</span>}
                 </span>
                 <span className="unplanted-category">
-                  {CATEGORY_LABELS[seed.category]}
+                  {getCategoryLabel(seed.category)}
                 </span>
               </div>
             ))}
