@@ -1,5 +1,5 @@
 import type { Seed, PlantingLocation } from '../types';
-import { CATEGORY_LABELS, MONTH_NAMES } from '../types';
+import { getCategoryLabel, MONTH_NAMES } from '../types';
 import './SeedCard.css';
 
 interface SeedCardProps {
@@ -12,7 +12,7 @@ interface SeedCardProps {
 }
 
 export function SeedCard({ seed, locations, onEdit, onDelete, onCopy, onQuickPlant }: SeedCardProps) {
-  const { nameFi, variety, category, subcategory, plantingTime, growingInstructions, imageUrl } = seed;
+  const { nameFi, variety, category, subcategory, categoryType, plantingDepthCm, plantingTime, growingInstructions, imageUrl } = seed;
 
   const plantingTimeText = `${MONTH_NAMES[plantingTime.startMonth - 1]} - ${MONTH_NAMES[plantingTime.endMonth - 1]}`;
 
@@ -33,12 +33,17 @@ export function SeedCard({ seed, locations, onEdit, onDelete, onCopy, onQuickPla
       )}
       <div className="seed-card-header">
         <div className="seed-badges">
-          <span className={`category-badge category-${category}`}>
-            {CATEGORY_LABELS[category]}
+          <span className={`category-badge category-${categoryType === 'sipuli' ? 'kukat' : category}`}>
+            {getCategoryLabel(category)}
           </span>
           {subcategory && (
             <span className="subcategory-badge">
               {subcategory}
+            </span>
+          )}
+          {categoryType === 'sipuli' && (
+            <span className="category-type-badge">
+              🔵 Sipuli
             </span>
           )}
         </div>
@@ -62,6 +67,12 @@ export function SeedCard({ seed, locations, onEdit, onDelete, onCopy, onQuickPla
           <span>{plantingTimeText}</span>
           {plantingTime.indoor && <span className="indoor-badge">Esikasvatus</span>}
         </div>
+        {categoryType === 'sipuli' && plantingDepthCm !== undefined && (
+          <div className="planting-depth">
+            <span className="label">Istutussyvyys:</span>
+            <span>{plantingDepthCm} cm</span>
+          </div>
+        )}
       </div>
       {growingInstructions && <p className="growing-instructions">{growingInstructions}</p>}
 

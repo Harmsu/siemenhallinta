@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   CATEGORY_LABELS,
+  CATEGORY_TYPE_LABELS,
   MONTH_NAMES,
   SUN_EXPOSURE_LABELS,
   PLANTING_STATUS_LABELS,
@@ -18,6 +19,17 @@ describe('CATEGORY_LABELS', () => {
 
   it('sisältää 5 kategoriaa', () => {
     expect(Object.keys(CATEGORY_LABELS)).toHaveLength(5);
+  });
+});
+
+describe('CATEGORY_TYPE_LABELS', () => {
+  it('sisältää siemen- ja sipulityypit', () => {
+    expect(CATEGORY_TYPE_LABELS.siemen).toBe('Siemen');
+    expect(CATEGORY_TYPE_LABELS.sipuli).toBe('Sipuli');
+  });
+
+  it('sisältää 2 tyyppiä', () => {
+    expect(Object.keys(CATEGORY_TYPE_LABELS)).toHaveLength(2);
   });
 });
 
@@ -78,7 +90,7 @@ describe('CARE_TYPE_LABELS', () => {
     expect(CARE_TYPE_LABELS.other).toBe('Muu');
   });
 
-  it('sisältää 6 tyyppiä', () => {
-    expect(Object.keys(CARE_TYPE_LABELS)).toHaveLength(6);
+  it('sisältää 9 tyyppiä', () => {
+    expect(Object.keys(CARE_TYPE_LABELS)).toHaveLength(9);
   });
 });

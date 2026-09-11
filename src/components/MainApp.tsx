@@ -1,10 +1,13 @@
-import { useState, useMemo } from 'react';
-import type { Seed, SeedCategory, PlantingLocation, Planting, CareLogEntry } from '../types';
+import { useState, useMemo, useRef } from 'react';
+import type { Seed, CategoryType, PlantingLocation, Planting, CareLogEntry } from '../types';
+import { BULB_TYPE_ANCHOR, CATEGORY_ANCHOR } from '../types';
+import { seedsToCsv, parseSeedsCsv, downloadCsv, csvFilenameFor } from '../utils/seedCsv';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { SeedList } from './SeedList';
 import { SeedForm } from './SeedForm';
 import { SearchBar } from './SearchBar';
 import { CategoryFilter } from './CategoryFilter';
+import { BulbCategoryFilter } from './BulbCategoryFilter';
 import { LocationList } from './LocationList';
 import { LocationForm } from './LocationForm';
 import { PlantingList } from './PlantingList';
@@ -12,8 +15,9 @@ import { PlantingForm } from './PlantingForm';
 import { CareLogForm } from './CareLogForm';
 import { Calendar } from './Calendar';
 import { Statistics } from './Statistics';
+import { ChangePasswordForm } from './ChangePasswordForm';
 
-type View = 'seeds' | 'locations' | 'plantings' | 'calendar' | 'statistics';
+type View = 'seeds' | 'bulbs' | 'locations' | 'plantings' | 'calendar' | 'statistics';
 
 interface MainAppProps {
   onLogout: () => void;
@@ -21,6 +25,7 @@ interface MainAppProps {
 
 export function MainApp({ onLogout }: MainAppProps) {
   const [activeView, setActiveView] = useState<View>('seeds');
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   // Supabase data
   const {
@@ -44,14 +49,19 @@ export function MainApp({ onLogout }: MainAppProps) {
     subcategories,
     addSubcategory,
     deleteSubcategory,
-  } = useSupabaseData();
+  } = useSupabaseData(true);
 
   // Siemenet UI state
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<SeedCategory | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [isSeedFormOpen, setIsSeedFormOpen] = useState(false);
   const [editingSeed, setEditingSeed] = useState<Seed | null>(null);
+
+  // Sipulit UI state
+  const [bulbSearchQuery, setBulbSearchQuery] = useState('');
+  const [selectedBulbType, setSelectedBulbType] = useState<string | null>(null);
+  const [selectedBulbVariety, setSelectedBulbVariety] = useState<string | null>(null);
 
   // Istutuspaikat UI state
   const [locationSearch, setLocationSearch] = useState('');
@@ -60,6 +70,7 @@ export function MainApp({ onLogout }: MainAppProps) {
 
   // Istutukset UI state
   const [plantingSearch, setPlantingSearch] = useState('');
+  const [selectedPlantingType, setSelectedPlantingType] = useState<CategoryType | null>(null);
   const [isPlantingFormOpen, setIsPlantingFormOpen] = useState(false);
   const [editingPlanting, setEditingPlanting] = useState<Planting | null>(null);
   const [plantingInitialDate, setPlantingInitialDate] = useState<string>('');
@@ -69,9 +80,11 @@ export function MainApp({ onLogout }: MainAppProps) {
   const [careLogPlantingId, setCareLogPlantingId] = useState<string>('');
   const [careLogInitialDate, setCareLogInitialDate] = useState<string>('');
 
-  // Siementen suodatus ja järjestys (aakkosjärjestys)
+  // Siementen suodatus ja järjestys (aakkosjärjestys) - vain categoryType 'siemen'
   const filteredSeeds = useMemo(() => {
     const filtered = seeds.filter((seed) => {
+      if (seed.categoryType !== 'siemen') return false;
+
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch =
         searchQuery === '' ||
@@ -95,6 +108,33 @@ export function MainApp({ onLogout }: MainAppProps) {
     });
   }, [seeds, searchQuery, selectedCategory, selectedSubcategory]);
 
+  // Sipulien suodatus ja järjestys - vain categoryType 'sipuli'
+  const filteredBulbs = useMemo(() => {
+    const filtered = seeds.filter((seed) => {
+      if (seed.categoryType !== 'sipuli') return false;
+
+      const searchLower = bulbSearchQuery.toLowerCase();
+      const matchesSearch =
+        bulbSearchQuery === '' ||
+        seed.nameFi.toLowerCase().includes(searchLower) ||
+        (seed.variety && seed.variety.toLowerCase().includes(searchLower));
+
+      const matchesType =
+        selectedBulbType === null || seed.category === selectedBulbType;
+
+      const matchesVariety =
+        selectedBulbVariety === null || seed.subcategory === selectedBulbVariety;
+
+      return matchesSearch && matchesType && matchesVariety;
+    });
+
+    return filtered.sort((a, b) => {
+      const nameA = `${a.nameFi} ${a.variety || ''}`.toLowerCase();
+      const nameB = `${b.nameFi} ${b.variety || ''}`.toLowerCase();
+      return nameA.localeCompare(nameB, 'fi');
+    });
+  }, [seeds, bulbSearchQuery, selectedBulbType, selectedBulbVariety]);
+
   // Istutuspaikkojen suodatus
   const filteredLocations = useMemo(() => {
     if (locationSearch === '') return locations;
@@ -106,18 +146,24 @@ export function MainApp({ onLogout }: MainAppProps) {
 
   // Istutusten suodatus
   const filteredPlantings = useMemo(() => {
-    if (plantingSearch === '') return plantings;
-    const searchLower = plantingSearch.toLowerCase();
     return plantings.filter((p) => {
       const seed = seeds.find((s) => s.id === p.seedId);
       const location = locations.find((l) => l.id === p.locationId);
-      return (
-        (seed?.nameFi.toLowerCase().includes(searchLower)) ||
-        (seed?.variety?.toLowerCase().includes(searchLower)) ||
-        (location?.name.toLowerCase().includes(searchLower))
-      );
+
+      const matchesType =
+        selectedPlantingType === null || seed?.categoryType === selectedPlantingType;
+
+      if (plantingSearch === '') return matchesType;
+
+      const searchLower = plantingSearch.toLowerCase();
+      const matchesSearch =
+        seed?.nameFi.toLowerCase().includes(searchLower) ||
+        seed?.variety?.toLowerCase().includes(searchLower) ||
+        location?.name.toLowerCase().includes(searchLower);
+
+      return matchesType && matchesSearch;
     });
-  }, [plantings, plantingSearch, seeds, locations]);
+  }, [plantings, plantingSearch, selectedPlantingType, seeds, locations]);
 
   // Siementen käsittelijät
   const handleSaveSeed = async (seedData: Omit<Seed, 'id' | 'createdAt'> & { id?: string }) => {
@@ -148,6 +194,47 @@ export function MainApp({ onLogout }: MainAppProps) {
         console.error('Error deleting seed:', err);
         alert('Virhe poistettaessa siementä');
       }
+    }
+  };
+
+  const seedImportInputRef = useRef<HTMLInputElement>(null);
+  const bulbImportInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExportSeeds = (categoryType: CategoryType) => {
+    const filtered = seeds.filter((s) => s.categoryType === categoryType);
+    downloadCsv(csvFilenameFor(categoryType), seedsToCsv(filtered));
+  };
+
+  const handleImportSeeds = async (file: File, categoryType: CategoryType) => {
+    const anchor = categoryType === 'sipuli' ? BULB_TYPE_ANCHOR : CATEGORY_ANCHOR;
+    const knownCategories = new Set(subcategories.filter((s) => s.category === anchor).map((s) => s.name));
+    const knownSubcategories = new Set(subcategories.map((s) => `${s.category}::${s.name}`));
+
+    try {
+      const text = await file.text();
+      const rows = parseSeedsCsv(text);
+      let imported = 0;
+
+      for (const row of rows) {
+        if (!row.nameFi || !row.category) continue;
+
+        if (!knownCategories.has(row.category)) {
+          await addSubcategory(anchor, row.category);
+          knownCategories.add(row.category);
+        }
+        if (row.subcategory && !knownSubcategories.has(`${row.category}::${row.subcategory}`)) {
+          await addSubcategory(row.category, row.subcategory);
+          knownSubcategories.add(`${row.category}::${row.subcategory}`);
+        }
+
+        await addSeed({ ...row, categoryType });
+        imported++;
+      }
+
+      alert(`Tuotu ${imported} ${categoryType === 'sipuli' ? 'sipulia' : 'siementä'}.`);
+    } catch (err) {
+      console.error('Error importing CSV:', err);
+      alert('Virhe CSV-tiedoston tuonnissa. Tarkista tiedoston muoto.');
     }
   };
 
@@ -353,9 +440,14 @@ export function MainApp({ onLogout }: MainAppProps) {
       <header className="header">
         <div className="header-top">
           <h1>Harmsun siemenet</h1>
-          <button className="btn-logout" onClick={onLogout}>
-            Kirjaudu ulos
-          </button>
+          <div className="header-actions">
+            <button className="btn-secondary" onClick={() => setIsChangePasswordOpen(true)}>
+              Vaihda salasana
+            </button>
+            <button className="btn-logout" onClick={onLogout}>
+              Kirjaudu ulos
+            </button>
+          </div>
         </div>
         <nav className="nav-tabs">
           <button
@@ -363,6 +455,12 @@ export function MainApp({ onLogout }: MainAppProps) {
             onClick={() => setActiveView('seeds')}
           >
             Siemenet
+          </button>
+          <button
+            className={`nav-tab ${activeView === 'bulbs' ? 'active' : ''}`}
+            onClick={() => setActiveView('bulbs')}
+          >
+            Sipulit
           </button>
           <button
             className={`nav-tab ${activeView === 'locations' ? 'active' : ''}`}
@@ -405,9 +503,28 @@ export function MainApp({ onLogout }: MainAppProps) {
                   onSubcategoryChange={setSelectedSubcategory}
                 />
               </div>
-              <button className="btn-add" onClick={() => setIsSeedFormOpen(true)}>
-                + Lisää siemen
-              </button>
+              <div className="toolbar-right">
+                <button className="btn-secondary" onClick={() => handleExportSeeds('siemen')}>
+                  Vie CSV
+                </button>
+                <button className="btn-secondary" onClick={() => seedImportInputRef.current?.click()}>
+                  Tuo CSV
+                </button>
+                <input
+                  ref={seedImportInputRef}
+                  type="file"
+                  accept=".csv,text/csv"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImportSeeds(file, 'siemen');
+                    e.target.value = '';
+                  }}
+                />
+                <button className="btn-add" onClick={() => setIsSeedFormOpen(true)}>
+                  + Lisää siemen
+                </button>
+              </div>
             </div>
 
             <p className="item-count">
@@ -416,6 +533,58 @@ export function MainApp({ onLogout }: MainAppProps) {
 
             <SeedList
               seeds={filteredSeeds}
+              locations={locations}
+              onEdit={handleEditSeed}
+              onDelete={handleDeleteSeed}
+              onCopy={handleCopySeed}
+              onQuickPlant={handleQuickPlant}
+            />
+          </>
+        )}
+
+        {activeView === 'bulbs' && (
+          <>
+            <div className="toolbar">
+              <div className="toolbar-left">
+                <SearchBar value={bulbSearchQuery} onChange={setBulbSearchQuery} />
+                <BulbCategoryFilter
+                  subcategories={subcategories}
+                  selectedType={selectedBulbType}
+                  selectedVariety={selectedBulbVariety}
+                  onTypeChange={setSelectedBulbType}
+                  onVarietyChange={setSelectedBulbVariety}
+                />
+              </div>
+              <div className="toolbar-right">
+                <button className="btn-secondary" onClick={() => handleExportSeeds('sipuli')}>
+                  Vie CSV
+                </button>
+                <button className="btn-secondary" onClick={() => bulbImportInputRef.current?.click()}>
+                  Tuo CSV
+                </button>
+                <input
+                  ref={bulbImportInputRef}
+                  type="file"
+                  accept=".csv,text/csv"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImportSeeds(file, 'sipuli');
+                    e.target.value = '';
+                  }}
+                />
+                <button className="btn-add" onClick={() => setIsSeedFormOpen(true)}>
+                  + Lisää sipuli
+                </button>
+              </div>
+            </div>
+
+            <p className="item-count">
+              Näytetään {filteredBulbs.length} / {seeds.filter((s) => s.categoryType === 'sipuli').length} sipulia
+            </p>
+
+            <SeedList
+              seeds={filteredBulbs}
               locations={locations}
               onEdit={handleEditSeed}
               onDelete={handleDeleteSeed}
@@ -453,6 +622,26 @@ export function MainApp({ onLogout }: MainAppProps) {
             <div className="toolbar">
               <div className="toolbar-left">
                 <SearchBar value={plantingSearch} onChange={setPlantingSearch} />
+                <div className="category-filter">
+                  <button
+                    className={`filter-btn ${selectedPlantingType === null ? 'active' : ''}`}
+                    onClick={() => setSelectedPlantingType(null)}
+                  >
+                    Kaikki
+                  </button>
+                  <button
+                    className={`filter-btn ${selectedPlantingType === 'siemen' ? 'active' : ''}`}
+                    onClick={() => setSelectedPlantingType('siemen')}
+                  >
+                    Siemenet
+                  </button>
+                  <button
+                    className={`filter-btn ${selectedPlantingType === 'sipuli' ? 'active' : ''}`}
+                    onClick={() => setSelectedPlantingType('sipuli')}
+                  >
+                    Sipulit
+                  </button>
+                </div>
               </div>
               <button className="btn-add" onClick={() => setIsPlantingFormOpen(true)}>
                 + Lisää istutus
@@ -501,6 +690,7 @@ export function MainApp({ onLogout }: MainAppProps) {
       {isSeedFormOpen && (
         <SeedForm
           seed={editingSeed}
+          defaultCategoryType={activeView === 'bulbs' ? 'sipuli' : 'siemen'}
           subcategories={subcategories}
           onSave={handleSaveSeed}
           onAddSubcategory={addSubcategory}
@@ -550,6 +740,8 @@ export function MainApp({ onLogout }: MainAppProps) {
           }}
         />
       )}
+
+      {isChangePasswordOpen && <ChangePasswordForm onClose={() => setIsChangePasswordOpen(false)} />}
     </div>
   );
 }

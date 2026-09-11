@@ -1,118 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
-import type { Seed, PlantingLocation, Planting, CareLogEntry, Subcategory, SeedCategory } from '../types';
+import { api } from '../api/client';
+import type { Seed, PlantingLocation, Planting, CareLogEntry, Subcategory } from '../types';
 
-// Muunnosfunktiot tietokannan ja sovelluksen välillä
-function dbToSeed(row: any): Seed {
-  return {
-    id: row.id,
-    nameFi: row.name_fi,
-    variety: row.variety || '',
-    category: row.category,
-    subcategory: row.subcategory || '',
-    plantingTime: {
-      startMonth: row.planting_start_month,
-      endMonth: row.planting_end_month,
-      indoor: row.planting_indoor,
-    },
-    growingInstructions: row.growing_instructions || '',
-    imageUrl: row.image_url || '',
-    createdAt: row.created_at,
-  };
-}
-
-function seedToDb(seed: Omit<Seed, 'id' | 'createdAt'>) {
-  return {
-    name_fi: seed.nameFi,
-    variety: seed.variety || null,
-    category: seed.category,
-    subcategory: seed.subcategory || null,
-    planting_start_month: seed.plantingTime.startMonth,
-    planting_end_month: seed.plantingTime.endMonth,
-    planting_indoor: seed.plantingTime.indoor,
-    growing_instructions: seed.growingInstructions || null,
-    image_url: seed.imageUrl || null,
-  };
-}
-
-function dbToLocation(row: any): PlantingLocation {
-  return {
-    id: row.id,
-    name: row.name,
-    description: row.description || '',
-    sunExposure: row.sun_exposure,
-    soilType: row.soil_type || '',
-    createdAt: row.created_at,
-  };
-}
-
-function locationToDb(location: Omit<PlantingLocation, 'id' | 'createdAt'>) {
-  return {
-    name: location.name,
-    description: location.description || null,
-    sun_exposure: location.sunExposure,
-    soil_type: location.soilType || null,
-  };
-}
-
-function dbToPlanting(row: any): Planting {
-  return {
-    id: row.id,
-    seedId: row.seed_id,
-    locationId: row.location_id,
-    plantedDate: row.planted_date,
-    quantity: row.quantity,
-    currentQuantity: row.current_quantity ?? row.quantity,
-    notes: row.notes || '',
-    status: row.status,
-    createdAt: row.created_at,
-  };
-}
-
-function plantingToDb(planting: Omit<Planting, 'id' | 'createdAt'>) {
-  return {
-    seed_id: planting.seedId,
-    location_id: planting.locationId,
-    planted_date: planting.plantedDate,
-    quantity: planting.quantity,
-    current_quantity: planting.currentQuantity,
-    notes: planting.notes || null,
-    status: planting.status,
-  };
-}
-
-function dbToCareLog(row: any): CareLogEntry {
-  return {
-    id: row.id,
-    plantingId: row.planting_id,
-    date: row.date,
-    type: row.type,
-    notes: row.notes || '',
-    quantityAfter: row.quantity_after ?? undefined,
-    createdAt: row.created_at,
-  };
-}
-
-function careLogToDb(entry: Omit<CareLogEntry, 'id' | 'createdAt'>) {
-  return {
-    planting_id: entry.plantingId,
-    date: entry.date,
-    type: entry.type,
-    notes: entry.notes || null,
-    quantity_after: entry.quantityAfter ?? null,
-  };
-}
-
-function dbToSubcategory(row: any): Subcategory {
-  return {
-    id: row.id,
-    category: row.category,
-    name: row.name,
-    createdAt: row.created_at,
-  };
-}
-
-export function useSupabaseData() {
+export function useSupabaseData(enabled: boolean) {
   const [seeds, setSeeds] = useState<Seed[]>([]);
   const [locations, setLocations] = useState<PlantingLocation[]>([]);
   const [plantings, setPlantings] = useState<Planting[]>([]);
@@ -126,25 +16,18 @@ export function useSupabaseData() {
     setLoading(true);
     setError(null);
     try {
-      const [seedsRes, locationsRes, plantingsRes, careLogsRes, subcategoriesRes] = await Promise.all([
-        supabase.from('seeds').select('*').order('name_fi'),
-        supabase.from('locations').select('*').order('name'),
-        supabase.from('plantings').select('*').order('created_at', { ascending: false }),
-        supabase.from('care_logs').select('*').order('date', { ascending: false }),
-        supabase.from('subcategories').select('*').order('name'),
+      const [seedsData, locationsData, plantingsData, careLogsData, subcategoriesData] = await Promise.all([
+        api.getSeeds(),
+        api.getLocations(),
+        api.getPlantings(),
+        api.getCareLogs(),
+        api.getSubcategories(),
       ]);
-
-      if (seedsRes.error) throw seedsRes.error;
-      if (locationsRes.error) throw locationsRes.error;
-      if (plantingsRes.error) throw plantingsRes.error;
-      if (careLogsRes.error) throw careLogsRes.error;
-      if (subcategoriesRes.error) throw subcategoriesRes.error;
-
-      setSeeds(seedsRes.data.map(dbToSeed));
-      setLocations(locationsRes.data.map(dbToLocation));
-      setPlantings(plantingsRes.data.map(dbToPlanting));
-      setCareLogs(careLogsRes.data.map(dbToCareLog));
-      setSubcategories(subcategoriesRes.data.map(dbToSubcategory));
+      setSeeds(seedsData);
+      setLocations(locationsData);
+      setPlantings(plantingsData);
+      setCareLogs(careLogsData);
+      setSubcategories(subcategoriesData);
     } catch (err: any) {
       setError(err.message);
       console.error('Error fetching data:', err);
@@ -154,116 +37,72 @@ export function useSupabaseData() {
   }, []);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     fetchAll();
-  }, [fetchAll]);
+  }, [enabled, fetchAll]);
 
   // Siemenet
   const addSeed = async (seed: Omit<Seed, 'id' | 'createdAt'>) => {
-    const { data, error } = await supabase
-      .from('seeds')
-      .insert(seedToDb(seed))
-      .select()
-      .single();
-    if (error) throw error;
-    setSeeds((prev) => [...prev, dbToSeed(data)]);
-    return dbToSeed(data);
+    const data = await api.createSeed(seed);
+    setSeeds((prev) => [...prev, data]);
+    return data;
   };
 
   const updateSeed = async (id: string, seed: Omit<Seed, 'id' | 'createdAt'>) => {
-    const { data, error } = await supabase
-      .from('seeds')
-      .update(seedToDb(seed))
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    setSeeds((prev) => prev.map((s) => (s.id === id ? dbToSeed(data) : s)));
+    const data = await api.updateSeed(id, seed);
+    setSeeds((prev) => prev.map((s) => (s.id === id ? data : s)));
   };
 
   const deleteSeed = async (id: string) => {
-    const seed = seeds.find((s) => s.id === id);
-    const { error } = await supabase.from('seeds').delete().eq('id', id);
-    if (error) throw error;
+    await api.deleteSeed(id);
     setSeeds((prev) => prev.filter((s) => s.id !== id));
-    if (seed?.imageUrl && seed.imageUrl.includes('seed-images')) {
-      const path = seed.imageUrl.split('/seed-images/')[1];
-      if (path) await supabase.storage.from('seed-images').remove([path]);
-    }
   };
 
   // Istutuspaikat
   const addLocation = async (location: Omit<PlantingLocation, 'id' | 'createdAt'>) => {
-    const { data, error } = await supabase
-      .from('locations')
-      .insert(locationToDb(location))
-      .select()
-      .single();
-    if (error) throw error;
-    setLocations((prev) => [...prev, dbToLocation(data)]);
-    return dbToLocation(data);
+    const data = await api.createLocation(location);
+    setLocations((prev) => [...prev, data]);
+    return data;
   };
 
   const updateLocation = async (id: string, location: Omit<PlantingLocation, 'id' | 'createdAt'>) => {
-    const { data, error } = await supabase
-      .from('locations')
-      .update(locationToDb(location))
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    setLocations((prev) => prev.map((l) => (l.id === id ? dbToLocation(data) : l)));
+    const data = await api.updateLocation(id, location);
+    setLocations((prev) => prev.map((l) => (l.id === id ? data : l)));
   };
 
   const deleteLocation = async (id: string) => {
-    const { error } = await supabase.from('locations').delete().eq('id', id);
-    if (error) throw error;
+    await api.deleteLocation(id);
     setLocations((prev) => prev.filter((l) => l.id !== id));
   };
 
   // Istutukset
   const addPlanting = async (planting: Omit<Planting, 'id' | 'createdAt'>) => {
-    const { data, error } = await supabase
-      .from('plantings')
-      .insert(plantingToDb(planting))
-      .select()
-      .single();
-    if (error) throw error;
-    setPlantings((prev) => [...prev, dbToPlanting(data)]);
-    return dbToPlanting(data);
+    const data = await api.createPlanting(planting);
+    setPlantings((prev) => [...prev, data]);
+    return data;
   };
 
   const updatePlanting = async (id: string, planting: Omit<Planting, 'id' | 'createdAt'>, lossReason?: string) => {
-    const { data, error } = await supabase
-      .from('plantings')
-      .update(plantingToDb(planting))
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    setPlantings((prev) => prev.map((p) => (p.id === id ? dbToPlanting(data) : p)));
+    const data = await api.updatePlanting(id, planting);
+    setPlantings((prev) => prev.map((p) => (p.id === id ? data : p)));
 
     if (lossReason && planting.currentQuantity < planting.quantity) {
-      const { data: logData, error: logError } = await supabase
-        .from('care_logs')
-        .insert({
-          planting_id: id,
-          date: new Date().toISOString().split('T')[0],
-          type: 'loss',
-          notes: lossReason,
-          quantity_after: planting.currentQuantity,
-        })
-        .select()
-        .single();
-      if (logError) throw logError;
-      if (logData) {
-        setCareLogs((prev) => [...prev, dbToCareLog(logData)]);
-      }
+      const logData = await api.createCareLog({
+        plantingId: id,
+        date: new Date().toISOString().split('T')[0],
+        type: 'loss',
+        notes: lossReason,
+        quantityAfter: planting.currentQuantity,
+      });
+      setCareLogs((prev) => [...prev, logData]);
     }
   };
 
   const deletePlanting = async (id: string) => {
-    const { error } = await supabase.from('plantings').delete().eq('id', id);
-    if (error) throw error;
+    await api.deletePlanting(id);
     setPlantings((prev) => prev.filter((p) => p.id !== id));
     // Hoitologit poistuvat automaattisesti CASCADE-säännön takia
     setCareLogs((prev) => prev.filter((c) => c.plantingId !== id));
@@ -271,37 +110,25 @@ export function useSupabaseData() {
 
   // Hoitoloki
   const addCareLog = async (entry: Omit<CareLogEntry, 'id' | 'createdAt'>) => {
-    const { data, error } = await supabase
-      .from('care_logs')
-      .insert(careLogToDb(entry))
-      .select()
-      .single();
-    if (error) throw error;
-    setCareLogs((prev) => [...prev, dbToCareLog(data)]);
-    return dbToCareLog(data);
+    const data = await api.createCareLog(entry);
+    setCareLogs((prev) => [...prev, data]);
+    return data;
   };
 
   const deleteCareLog = async (id: string) => {
-    const { error } = await supabase.from('care_logs').delete().eq('id', id);
-    if (error) throw error;
+    await api.deleteCareLog(id);
     setCareLogs((prev) => prev.filter((c) => c.id !== id));
   };
 
   // Alakategoriat
-  const addSubcategory = async (category: SeedCategory, name: string) => {
-    const { data, error } = await supabase
-      .from('subcategories')
-      .insert({ category, name })
-      .select()
-      .single();
-    if (error) throw error;
-    setSubcategories((prev) => [...prev, dbToSubcategory(data)]);
-    return dbToSubcategory(data);
+  const addSubcategory = async (category: string, name: string) => {
+    const data = await api.createSubcategory(category, name);
+    setSubcategories((prev) => [...prev, data]);
+    return data;
   };
 
   const deleteSubcategory = async (id: string) => {
-    const { error } = await supabase.from('subcategories').delete().eq('id', id);
-    if (error) throw error;
+    await api.deleteSubcategory(id);
     setSubcategories((prev) => prev.filter((s) => s.id !== id));
   };
 

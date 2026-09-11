@@ -1,19 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
-import type { Seed, SeedCategory, Subcategory } from '../types';
-import { CATEGORY_LABELS, MONTH_NAMES } from '../types';
-import { supabase } from '../lib/supabase';
+import type { Seed, Subcategory, CategoryType } from '../types';
+import { getCategoryLabel, MONTH_NAMES, BULB_TYPE_ANCHOR, CATEGORY_ANCHOR } from '../types';
+import { api } from '../api/client';
 import './SeedForm.css';
 
 interface SeedFormProps {
   seed?: Seed | null;
+  defaultCategoryType?: CategoryType;
   subcategories: Subcategory[];
   onSave: (seed: Omit<Seed, 'id' | 'createdAt'> & { id?: string }) => void;
-  onAddSubcategory: (category: SeedCategory, name: string) => Promise<Subcategory>;
+  onAddSubcategory: (category: string, name: string) => Promise<Subcategory>;
   onDeleteSubcategory: (id: string) => Promise<void>;
   onCancel: () => void;
 }
-
-const CATEGORIES: SeedCategory[] = ['vihannekset', 'yrtit', 'kukat', 'hedelmät', 'marjat'];
 
 async function compressImageToBlob(file: File, maxWidth = 800, quality = 0.7): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -45,19 +44,30 @@ async function compressImageToBlob(file: File, maxWidth = 800, quality = 0.7): P
   });
 }
 
-export function SeedForm({ seed, subcategories, onSave, onAddSubcategory, onDeleteSubcategory, onCancel }: SeedFormProps) {
+export function SeedForm({ seed, defaultCategoryType, subcategories, onSave, onAddSubcategory, onDeleteSubcategory, onCancel }: SeedFormProps) {
   const [nameFi, setNameFi] = useState('');
   const [variety, setVariety] = useState('');
-  const [category, setCategory] = useState<SeedCategory>('vihannekset');
+  const [category, setCategory] = useState<string>('');
   const [subcategory, setSubcategory] = useState('');
+  const [categoryType, setCategoryType] = useState<CategoryType>(defaultCategoryType || 'siemen');
+  const [plantingDepthCm, setPlantingDepthCm] = useState('');
   const [newSubcategory, setNewSubcategory] = useState('');
   const [isAddingSubcategory, setIsAddingSubcategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [startMonth, setStartMonth] = useState(4);
   const [endMonth, setEndMonth] = useState(5);
   const [indoor, setIndoor] = useState(false);
   const [growingInstructions, setGrowingInstructions] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Kategoria-ankkuri riippuu tyypistä: siemenillä kiinteä "kategoriat"-lista, sipuleilla "sipulit"-lista.
+  // Molemmat ovat käyttäjän itse lisättäviä/poistettavia, samalla mekanismilla.
+  const categoryAnchor = categoryType === 'sipuli' ? BULB_TYPE_ANCHOR : CATEGORY_ANCHOR;
+  const categoryOptions = subcategories
+    .filter((s) => s.category === categoryAnchor)
+    .sort((a, b) => a.name.localeCompare(b.name, 'fi'));
 
   // Suodata alakategoriat valitun kategorian mukaan
   const categorySubcategories = subcategories
@@ -70,6 +80,8 @@ export function SeedForm({ seed, subcategories, onSave, onAddSubcategory, onDele
       setVariety(seed.variety);
       setCategory(seed.category);
       setSubcategory(seed.subcategory || '');
+      setCategoryType(seed.categoryType || 'siemen');
+      setPlantingDepthCm(seed.plantingDepthCm !== undefined ? String(seed.plantingDepthCm) : '');
       setStartMonth(seed.plantingTime.startMonth);
       setEndMonth(seed.plantingTime.endMonth);
       setIndoor(seed.plantingTime.indoor);
@@ -78,8 +90,8 @@ export function SeedForm({ seed, subcategories, onSave, onAddSubcategory, onDele
     }
   }, [seed]);
 
-  // Nollaa alakategoria kun yläkategoria vaihtuu
-  const handleCategoryChange = (newCategory: SeedCategory) => {
+  // Nollaa alakategoria kun kategoria vaihtuu
+  const handleCategoryChange = (newCategory: string) => {
     setCategory(newCategory);
     setSubcategory('');
     setIsAddingSubcategory(false);
@@ -99,16 +111,34 @@ export function SeedForm({ seed, subcategories, onSave, onAddSubcategory, onDele
     }
   };
 
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    try {
+      const added = await onAddSubcategory(categoryAnchor, newCategoryName.trim());
+      handleCategoryChange(added.name);
+      setNewCategoryName('');
+      setIsAddingCategory(false);
+    } catch (err) {
+      console.error('Error adding category:', err);
+      alert('Virhe lisättäessä kategoriaa');
+    }
+  };
+
+  const handleDeleteCategory = () => {
+    const found = categoryOptions.find((c) => c.name === category);
+    if (found) {
+      onDeleteSubcategory(found.id);
+      handleCategoryChange('');
+    }
+  };
+
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
       const blob = await compressImageToBlob(file);
-      const fileName = `${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, '_')}`;
-      const { data, error } = await supabase.storage.from('seed-images').upload(fileName, blob, { contentType: 'image/jpeg' });
-      if (error) throw error;
-      const { data: { publicUrl } } = supabase.storage.from('seed-images').getPublicUrl(data.path);
-      setImageUrl(publicUrl);
+      const url = await api.uploadImage(blob);
+      setImageUrl(url);
     } catch (err) {
       console.error('Error uploading image:', err);
       alert('Virhe kuvan latauksessa');
@@ -130,6 +160,8 @@ export function SeedForm({ seed, subcategories, onSave, onAddSubcategory, onDele
       variety,
       category,
       subcategory,
+      categoryType,
+      plantingDepthCm: categoryType === 'sipuli' && plantingDepthCm ? Number(plantingDepthCm) : undefined,
       plantingTime: {
         startMonth,
         endMonth,
@@ -143,7 +175,11 @@ export function SeedForm({ seed, subcategories, onSave, onAddSubcategory, onDele
   return (
     <div className="seed-form-overlay">
       <form className="seed-form" onSubmit={handleSubmit}>
-        <h2>{seed?.id ? 'Muokkaa siementä' : 'Lisää uusi siemen'}</h2>
+        <h2>
+          {seed?.id
+            ? (categoryType === 'sipuli' ? 'Muokkaa sipulia' : 'Muokkaa siementä')
+            : (categoryType === 'sipuli' ? 'Lisää uusi sipuli' : 'Lisää uusi siemen')}
+        </h2>
 
         <div className="form-group">
           <label htmlFor="nameFi">Nimi</label>
@@ -169,17 +205,64 @@ export function SeedForm({ seed, subcategories, onSave, onAddSubcategory, onDele
         <div className="form-row">
           <div className="form-group">
             <label htmlFor="category">Kategoria</label>
-            <select
-              id="category"
-              value={category}
-              onChange={(e) => handleCategoryChange(e.target.value as SeedCategory)}
-            >
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {CATEGORY_LABELS[cat]}
-                </option>
-              ))}
-            </select>
+            {isAddingCategory ? (
+              <div className="subcategory-add">
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="Uusi kategoria..."
+                  autoFocus
+                />
+                <button type="button" className="btn-small" onClick={handleAddCategory}>
+                  Lisää
+                </button>
+                <button
+                  type="button"
+                  className="btn-small btn-cancel"
+                  onClick={() => {
+                    setIsAddingCategory(false);
+                    setNewCategoryName('');
+                  }}
+                >
+                  Peruuta
+                </button>
+              </div>
+            ) : (
+              <div className="subcategory-select">
+                <select
+                  id="category"
+                  value={category}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
+                  required
+                >
+                  <option value="">Valitse kategoria</option>
+                  {categoryOptions.map((opt) => (
+                    <option key={opt.id} value={opt.name}>
+                      {getCategoryLabel(opt.name)}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn-add-subcategory"
+                  onClick={() => setIsAddingCategory(true)}
+                  title="Lisää uusi kategoria"
+                >
+                  +
+                </button>
+                {category && (
+                  <button
+                    type="button"
+                    className="btn-delete-subcategory"
+                    onClick={handleDeleteCategory}
+                    title="Poista kategoria"
+                  >
+                    -
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="form-group">
@@ -213,6 +296,7 @@ export function SeedForm({ seed, subcategories, onSave, onAddSubcategory, onDele
                   id="subcategory"
                   value={subcategory}
                   onChange={(e) => setSubcategory(e.target.value)}
+                  disabled={!category}
                 >
                   <option value="">Ei alakategoriaa</option>
                   {categorySubcategories.map((sub) => (
@@ -225,6 +309,7 @@ export function SeedForm({ seed, subcategories, onSave, onAddSubcategory, onDele
                   type="button"
                   className="btn-add-subcategory"
                   onClick={() => setIsAddingSubcategory(true)}
+                  disabled={!category}
                   title="Lisää uusi alakategoria"
                 >
                   +
@@ -249,6 +334,20 @@ export function SeedForm({ seed, subcategories, onSave, onAddSubcategory, onDele
             )}
           </div>
         </div>
+
+        {categoryType === 'sipuli' && (
+          <div className="form-group">
+            <label htmlFor="plantingDepthCm">Istutussyvyys (cm)</label>
+            <input
+              id="plantingDepthCm"
+              type="number"
+              min="0"
+              step="0.5"
+              value={plantingDepthCm}
+              onChange={(e) => setPlantingDepthCm(e.target.value)}
+            />
+          </div>
+        )}
 
         <div className="form-row">
           <div className="form-group">
@@ -282,16 +381,18 @@ export function SeedForm({ seed, subcategories, onSave, onAddSubcategory, onDele
           </div>
         </div>
 
-        <div className="form-group checkbox-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={indoor}
-              onChange={(e) => setIndoor(e.target.checked)}
-            />
-            Esikasvatus sisällä
-          </label>
-        </div>
+        {categoryType !== 'sipuli' && (
+          <div className="form-group checkbox-group">
+            <label>
+              <input
+                type="checkbox"
+                checked={indoor}
+                onChange={(e) => setIndoor(e.target.checked)}
+              />
+              Esikasvatus sisällä
+            </label>
+          </div>
+        )}
 
         <div className="form-group">
           <label htmlFor="instructions">Kasvatusohjeet</label>
