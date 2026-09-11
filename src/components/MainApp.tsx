@@ -1,5 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import type { Seed, CategoryType, PlantingLocation, Planting, CareLogEntry } from '../types';
+import { BULB_TYPE_ANCHOR, CATEGORY_ANCHOR } from '../types';
+import { seedsToCsv, parseSeedsCsv, downloadCsv, csvFilenameFor } from '../utils/seedCsv';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { SeedList } from './SeedList';
 import { SeedForm } from './SeedForm';
@@ -13,6 +15,7 @@ import { PlantingForm } from './PlantingForm';
 import { CareLogForm } from './CareLogForm';
 import { Calendar } from './Calendar';
 import { Statistics } from './Statistics';
+import { ChangePasswordForm } from './ChangePasswordForm';
 
 type View = 'seeds' | 'bulbs' | 'locations' | 'plantings' | 'calendar' | 'statistics';
 
@@ -22,6 +25,7 @@ interface MainAppProps {
 
 export function MainApp({ onLogout }: MainAppProps) {
   const [activeView, setActiveView] = useState<View>('seeds');
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   // Supabase data
   const {
@@ -190,6 +194,47 @@ export function MainApp({ onLogout }: MainAppProps) {
         console.error('Error deleting seed:', err);
         alert('Virhe poistettaessa siementä');
       }
+    }
+  };
+
+  const seedImportInputRef = useRef<HTMLInputElement>(null);
+  const bulbImportInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExportSeeds = (categoryType: CategoryType) => {
+    const filtered = seeds.filter((s) => s.categoryType === categoryType);
+    downloadCsv(csvFilenameFor(categoryType), seedsToCsv(filtered));
+  };
+
+  const handleImportSeeds = async (file: File, categoryType: CategoryType) => {
+    const anchor = categoryType === 'sipuli' ? BULB_TYPE_ANCHOR : CATEGORY_ANCHOR;
+    const knownCategories = new Set(subcategories.filter((s) => s.category === anchor).map((s) => s.name));
+    const knownSubcategories = new Set(subcategories.map((s) => `${s.category}::${s.name}`));
+
+    try {
+      const text = await file.text();
+      const rows = parseSeedsCsv(text);
+      let imported = 0;
+
+      for (const row of rows) {
+        if (!row.nameFi || !row.category) continue;
+
+        if (!knownCategories.has(row.category)) {
+          await addSubcategory(anchor, row.category);
+          knownCategories.add(row.category);
+        }
+        if (row.subcategory && !knownSubcategories.has(`${row.category}::${row.subcategory}`)) {
+          await addSubcategory(row.category, row.subcategory);
+          knownSubcategories.add(`${row.category}::${row.subcategory}`);
+        }
+
+        await addSeed({ ...row, categoryType });
+        imported++;
+      }
+
+      alert(`Tuotu ${imported} ${categoryType === 'sipuli' ? 'sipulia' : 'siementä'}.`);
+    } catch (err) {
+      console.error('Error importing CSV:', err);
+      alert('Virhe CSV-tiedoston tuonnissa. Tarkista tiedoston muoto.');
     }
   };
 
@@ -395,9 +440,14 @@ export function MainApp({ onLogout }: MainAppProps) {
       <header className="header">
         <div className="header-top">
           <h1>Harmsun siemenet</h1>
-          <button className="btn-logout" onClick={onLogout}>
-            Kirjaudu ulos
-          </button>
+          <div className="header-actions">
+            <button className="btn-secondary" onClick={() => setIsChangePasswordOpen(true)}>
+              Vaihda salasana
+            </button>
+            <button className="btn-logout" onClick={onLogout}>
+              Kirjaudu ulos
+            </button>
+          </div>
         </div>
         <nav className="nav-tabs">
           <button
@@ -453,9 +503,28 @@ export function MainApp({ onLogout }: MainAppProps) {
                   onSubcategoryChange={setSelectedSubcategory}
                 />
               </div>
-              <button className="btn-add" onClick={() => setIsSeedFormOpen(true)}>
-                + Lisää siemen
-              </button>
+              <div className="toolbar-right">
+                <button className="btn-secondary" onClick={() => handleExportSeeds('siemen')}>
+                  Vie CSV
+                </button>
+                <button className="btn-secondary" onClick={() => seedImportInputRef.current?.click()}>
+                  Tuo CSV
+                </button>
+                <input
+                  ref={seedImportInputRef}
+                  type="file"
+                  accept=".csv,text/csv"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImportSeeds(file, 'siemen');
+                    e.target.value = '';
+                  }}
+                />
+                <button className="btn-add" onClick={() => setIsSeedFormOpen(true)}>
+                  + Lisää siemen
+                </button>
+              </div>
             </div>
 
             <p className="item-count">
@@ -486,9 +555,28 @@ export function MainApp({ onLogout }: MainAppProps) {
                   onVarietyChange={setSelectedBulbVariety}
                 />
               </div>
-              <button className="btn-add" onClick={() => setIsSeedFormOpen(true)}>
-                + Lisää sipuli
-              </button>
+              <div className="toolbar-right">
+                <button className="btn-secondary" onClick={() => handleExportSeeds('sipuli')}>
+                  Vie CSV
+                </button>
+                <button className="btn-secondary" onClick={() => bulbImportInputRef.current?.click()}>
+                  Tuo CSV
+                </button>
+                <input
+                  ref={bulbImportInputRef}
+                  type="file"
+                  accept=".csv,text/csv"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImportSeeds(file, 'sipuli');
+                    e.target.value = '';
+                  }}
+                />
+                <button className="btn-add" onClick={() => setIsSeedFormOpen(true)}>
+                  + Lisää sipuli
+                </button>
+              </div>
             </div>
 
             <p className="item-count">
@@ -652,6 +740,8 @@ export function MainApp({ onLogout }: MainAppProps) {
           }}
         />
       )}
+
+      {isChangePasswordOpen && <ChangePasswordForm onClose={() => setIsChangePasswordOpen(false)} />}
     </div>
   );
 }
