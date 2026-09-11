@@ -205,33 +205,34 @@ export function MainApp({ onLogout }: MainAppProps) {
     downloadCsv(csvFilenameFor(categoryType), seedsToCsv(filtered));
   };
 
-  const handleImportSeeds = async (file: File, categoryType: CategoryType) => {
-    const anchor = categoryType === 'sipuli' ? BULB_TYPE_ANCHOR : CATEGORY_ANCHOR;
-    const knownCategories = new Set(subcategories.filter((s) => s.category === anchor).map((s) => s.name));
-    const knownSubcategories = new Set(subcategories.map((s) => `${s.category}::${s.name}`));
+  const handleImportSeeds = async (file: File) => {
+    const knownCategories = new Set(subcategories.map((s) => `${s.category}::${s.name}`));
 
     try {
       const text = await file.text();
       const rows = parseSeedsCsv(text);
-      let imported = 0;
+      let importedSeeds = 0;
+      let importedBulbs = 0;
 
       for (const row of rows) {
         if (!row.nameFi || !row.category) continue;
 
-        if (!knownCategories.has(row.category)) {
+        const anchor = row.categoryType === 'sipuli' ? BULB_TYPE_ANCHOR : CATEGORY_ANCHOR;
+        if (!knownCategories.has(`${anchor}::${row.category}`)) {
           await addSubcategory(anchor, row.category);
-          knownCategories.add(row.category);
+          knownCategories.add(`${anchor}::${row.category}`);
         }
-        if (row.subcategory && !knownSubcategories.has(`${row.category}::${row.subcategory}`)) {
+        if (row.subcategory && !knownCategories.has(`${row.category}::${row.subcategory}`)) {
           await addSubcategory(row.category, row.subcategory);
-          knownSubcategories.add(`${row.category}::${row.subcategory}`);
+          knownCategories.add(`${row.category}::${row.subcategory}`);
         }
 
-        await addSeed({ ...row, categoryType });
-        imported++;
+        await addSeed(row);
+        if (row.categoryType === 'sipuli') importedBulbs++;
+        else importedSeeds++;
       }
 
-      alert(`Tuotu ${imported} ${categoryType === 'sipuli' ? 'sipulia' : 'siementä'}.`);
+      alert(`Tuotu ${importedSeeds} siementä ja ${importedBulbs} sipulia.`);
     } catch (err) {
       console.error('Error importing CSV:', err);
       alert('Virhe CSV-tiedoston tuonnissa. Tarkista tiedoston muoto.');
@@ -517,7 +518,7 @@ export function MainApp({ onLogout }: MainAppProps) {
                   hidden
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) handleImportSeeds(file, 'siemen');
+                    if (file) handleImportSeeds(file);
                     e.target.value = '';
                   }}
                 />
@@ -569,7 +570,7 @@ export function MainApp({ onLogout }: MainAppProps) {
                   hidden
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) handleImportSeeds(file, 'sipuli');
+                    if (file) handleImportSeeds(file);
                     e.target.value = '';
                   }}
                 />

@@ -1,6 +1,7 @@
 import type { Seed, CategoryType } from '../types';
 
 const COLUMNS = [
+  'Tyyppi',
   'Kategoria',
   'Alakategoria',
   'Nimi',
@@ -22,6 +23,7 @@ function escapeField(value: string): string {
 
 function seedToRow(seed: Seed): string {
   const fields = [
+    seed.categoryType === 'sipuli' ? 'Sipuli' : 'Siemen',
     seed.category,
     seed.subcategory ?? '',
     seed.nameFi,
@@ -84,18 +86,25 @@ function parseCsvLines(text: string): string[][] {
   return rows.filter((r) => r.some((f) => f.trim() !== ''));
 }
 
-export type ImportedSeed = Omit<Seed, 'id' | 'createdAt' | 'categoryType'>;
+export type ImportedSeed = Omit<Seed, 'id' | 'createdAt'>;
+
+// Vanhoissa (ennen Tyyppi-saraketta viedyissä) CSV-tiedostoissa on 10 saraketta eikä Tyyppi-saraketta -
+// tunnistetaan sarakemäärästä ja oletetaan 'siemen', jotta vanhat vientitiedostot voi yhä tuoda.
+const LEGACY_COLUMN_COUNT = 10;
 
 export function parseSeedsCsv(text: string): ImportedSeed[] {
   const rows = parseCsvLines(text);
   if (rows.length === 0) return [];
 
-  const [, ...dataRows] = rows; // ensimmäinen rivi on otsikkorivi
+  const [header, ...dataRows] = rows;
+  const isLegacyFormat = header.length <= LEGACY_COLUMN_COUNT;
 
   return dataRows.map((cols) => {
-    const [category, subcategory, nameFi, variety, depth, startMonth, endMonth, indoor, instructions, imageUrl] =
-      cols;
+    const fields = isLegacyFormat ? ['Siemen', ...cols] : cols;
+    const [type, category, subcategory, nameFi, variety, depth, startMonth, endMonth, indoor, instructions, imageUrl] =
+      fields;
     return {
+      categoryType: (type ?? '').trim().toLowerCase() === 'sipuli' ? 'sipuli' : 'siemen',
       category: (category ?? '').trim(),
       subcategory: (subcategory ?? '').trim(),
       nameFi: (nameFi ?? '').trim(),
