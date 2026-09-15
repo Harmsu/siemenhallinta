@@ -1,34 +1,46 @@
-# Yhteenveto — Harmsun siemenet -migraatio (2026-09-10)
+# Yhteenveto — Harmsun siemenet -migraatio (päivitetty 2026-09-11)
 
-## Sovellus (siemenhallinta)
+## ✅ Sovellus on nyt kokonaan tuotannossa
 
-**Valmis ja testattu paikallisesti:**
-- Supabase → oma Express-backend UpCloud-Postgresilla (JWT-auth, moni-käyttäjätuki, käyttäjäkohtaisesti rajatut CRUD-reitit)
-- Kuvat SFTP:n yli rajoitetulle UpCloud-käyttäjälle (`siemen-images`, chroot, ei shell-pääsyä)
-- Uusi kukkasipulit-ominaisuus: omat "Siemenet"/"Sipulit"-välilehdet, kategoriat ja alakategoriat itse lisättäviä/poistettavia molemmille tyypeille, Istutukset-välilehden tyyppisuodatin
-- Alkuperäinen Supabase-projekti oli jo kadonnut etukäteen → uusi kanta lähti tyhjänä, ei datamigraatiota
+- **Sovellus**: https://harmsunsiemenet.netlify.app
+- **Backend**: `siemen-api` Renderissä (https://siemen-api.onrender.com)
+- **Tietokanta**: UpCloudin jaettu Postgres-palvelin, kanta `siemenhallinta`
+- **Käyttäjät**: `sanna.kuusela@iki.fi` ja `makisenpaivi@gmail.com` (kumpikin vaihtanut väliaikaissalasanan pysyvään sovelluksen "Vaihda salasana" -toiminnolla)
 
-**Jäljellä ennen tuotantoa:**
-1. Kahden oikean käyttäjän luonti (sähköpostit + väliaikaissalasanat annettava erikseen)
-2. Loppujen näkymien kunnollinen testaus (muokkaus/poisto, Hoitoloki, Kalenteri, Tilastot)
-3. Testidatan siivous (`uitest@example.com`-tili)
-4. Vasta sitten: branchin `upcloud-migration` merge masteriin, `siemen-api` Renderiin, Netlifyn `VITE_API_URL`-päivitys, tuotantotestaus
+**HUOM osoitteesta**: vanha `siemenhallinta.netlify.app` on edelleen olemassa mutta on eri, saavuttamattomalla Netlify-tilillä (sama kahden-tilin ongelma kuin GitHubissa aiemmin). Se jää käyttämättömäksi/rikkinäiseksi (Supabase-versio, Supabase-projekti poistunut). **Päivitä kirjanmerkit/pikakuvakkeet uuteen osoitteeseen `harmsunsiemenet.netlify.app`.**
 
-**Git**: kaikki koodi committoitu ja pushattu GitHubiin branchille `upcloud-migration` (Harmsu/siemenhallinta). Master koskematon sisällöltään.
+## Mitä muutettiin
 
-## Git-identiteetti-insidentti (korjattu)
+- Supabase (Auth + Postgres + Storage) → oma Express-backend UpCloudin Postgresilla, JWT-autentikointi
+- Kuvat: SFTP:n yli rajoitetulle UpCloud-käyttäjälle (ei enää Supabase Storage)
+- Uusi kukkasipulit-ominaisuus: omat "Siemenet"/"Sipulit"-välilehdet, itse muokattavat kategoriat/alakategoriat
+- Uusi CSV-tuonti/vienti (varmuuskopiointiin) siemenille ja sipuleille
+- Uusi salasanan vaihto -toiminto
+- Alkuperäinen Supabase-data oli jo kadonnut ennen migraation alkua — uusi kanta lähti tyhjänä
 
-Tällä koneella git ei ollut koskaan asetettu käyttämään henkilökohtaista sähköpostia, joten se päätteli automaattisesti työnantajan verkkotunnuksen (`vivicta.com`). Tämä näkyi useissa committeissa kolmessa eri repossa. Korjattu:
+## Tuotantodeployn aikana löytyneet ja korjatut bugit
 
-| Repo | Tilanne |
-|---|---|
-| **siemenhallinta** | Täysin korjattu ja pushattu (molemmat branchit) |
-| **HIFF** | Täysin korjattu ja pushattu (kaikki 19 committia) |
-| **uintiharjoittelu** | `vivicta.com` korjattu ja pushattu. Yksi vanha `tietoevry.com`-commit korjattu paikallisesti, pushi vielä tekemättä (säästetään build-minuutteja, tehdään seuraavan oikean deployn yhteydessä) |
+1. **Backend kaatui kokonaan** jos yksittäinen tietokantakysely epäonnistui kesken pyynnön (esim. verkkokatko) — korjattu `express-async-errors`-paketilla.
+2. **SFTP-avain ei toiminut Renderissä** ("Unsupported key format") — Renderin ympäristömuuttujakenttä ei säily monirivistä avainta luotettavasti. Korjattu muuntamalla avain yksiriviseksi `\n`-koodatuksi merkkijonoksi.
+3. **CSV-tuonti ei tallentanut siemen/sipuli-tyyppiä oikein** — tyyppi luettiin väärin vain napista, ei tiedostosta. Korjattu lisäämällä CSV:hen oma "Tyyppi"-sarake.
 
-Globaali git-asetus (`user.email = sanna.kuusela@iki.fi`) on korjattu pysyvästi tälle koneelle.
+## Päivitys 2026-09-15 — nimenvaihto ja käytettävyysparannukset
+
+- **Sovelluksen nimi vaihdettu**: "Harmsun siemenet" → "Harmsun Puutarhapäiväkirja" (kattaa nyt myös sipulit). Näkyy kirjautumissivulla, yläpalkissa, selaimen välilehden otsikossa ja PWA-manifestissa (kotinäytön nimi "Puutarha").
+- **Uusi Asetukset-välilehti** (valikon viimeinen): CSV-vienti/tuonti (siemenille ja sipuleille erikseen) ja salasanan vaihto siirretty tänne pois Siemenet/Sipulit-työkalupalkeista ja yläpalkista — ne täyttivät ruudun heti alussa erityisesti mobiilissa.
+- **Kategoriasuodatus** (`CategoryFilter.tsx`, `BulbCategoryFilter.tsx`): kun jokin tietty kategoria/tyyppi on valittu, ylärivillä näytetään enää vain valittu (+ "Kaikki"-nappi paluuta varten) koko kategorialistan sijaan — vähentää ruudun täyttymistä. Alakategoriat/lajikkeet näkyvät edelleen normaalisti valitun kategorian alla.
+- **Oletusvälilehti-asetus**: Asetuksista voi valita avautuuko Siemenet vai Sipulit ensimmäisenä kirjautuessa (kausiluontoinen käytettävyysparannus — esim. Sipulit auki istutuskaudella). Tallennetaan selaimen `localStorage`iin (`harmsu-default-tab`), per laite/selain.
+- **render.yaml-korjaus**: `CLIENT_URL` osoitti vanhaan, saavuttamattomaan `siemenhallinta.netlify.app`-osoitteeseen — korjattu oikeaan `harmsunsiemenet.netlify.app`-osoitteeseen.
+- Testattu paikallisesti SSH-tunnelin läpi (kirjautuminen, Asetukset-sivun toiminnot) ennen tuotantoon vientiä.
+
+## Git
+
+Kaikki koodi on nyt `master`-branchilla (Harmsu/siemenhallinta), pushattu GitHubiin. `upcloud-migration`-branch on yhä olemassa historiallisena viitteenä mutta ei enää aktiivisessa käytössä.
+
+## Git-identiteetti-insidentti (korjattu, edellisestä istunnosta)
+
+Tällä koneella git ei ollut koskaan asetettu käyttämään henkilökohtaista sähköpostia, joten se päätteli automaattisesti työnantajan verkkotunnuksen (`vivicta.com`). Korjattu kaikissa kolmessa repossa (siemenhallinta, HIFF, uintiharjoittelu). Globaali git-asetus (`user.email = sanna.kuusela@iki.fi`) on korjattu pysyvästi tälle koneelle.
 
 ## Muistiin tallennettu (Claude Code -automuisti)
 
 - `C:\Users\SannaKuusela\.claude\projects\C--Users-SannaKuusela\memory\project_siemenhallinta.md`
-- `C:\Users\SannaKuusela\.claude\projects\C--Users-SannaKuusela\memory\feedback_git_identity_never_work_email.md`

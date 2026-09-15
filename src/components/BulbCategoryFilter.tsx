@@ -21,6 +21,11 @@ export function BulbCategoryFilter({
     .filter((s) => s.category === BULB_TYPE_ANCHOR)
     .sort((a, b) => a.name.localeCompare(b.name, 'fi'));
 
+  // Kun tyyppi on valittu, näytetään vain valittu (ei kaikkia), ettei rivi täytä ruutua
+  const visibleBulbTypes = selectedType
+    ? bulbTypes.filter((type) => type.name === selectedType)
+    : bulbTypes;
+
   const varieties = selectedType
     ? subcategories
         .filter((s) => s.category === selectedType)
@@ -41,7 +46,7 @@ export function BulbCategoryFilter({
         >
           Kaikki
         </button>
-        {bulbTypes.map((type) => (
+        {visibleBulbTypes.map((type) => (
           <button
             key={type.id}
             className={`filter-btn ${selectedType === type.name ? 'active' : ''}`}

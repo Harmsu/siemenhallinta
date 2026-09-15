@@ -17,15 +17,29 @@ import { Calendar } from './Calendar';
 import { Statistics } from './Statistics';
 import { ChangePasswordForm } from './ChangePasswordForm';
 
-type View = 'seeds' | 'bulbs' | 'locations' | 'plantings' | 'calendar' | 'statistics';
+type View = 'seeds' | 'bulbs' | 'locations' | 'plantings' | 'calendar' | 'statistics' | 'settings';
+type DefaultTab = 'seeds' | 'bulbs';
+
+const DEFAULT_TAB_KEY = 'harmsu-default-tab';
+
+function getStoredDefaultTab(): DefaultTab {
+  const stored = localStorage.getItem(DEFAULT_TAB_KEY);
+  return stored === 'bulbs' ? 'bulbs' : 'seeds';
+}
 
 interface MainAppProps {
   onLogout: () => void;
 }
 
 export function MainApp({ onLogout }: MainAppProps) {
-  const [activeView, setActiveView] = useState<View>('seeds');
+  const [defaultTab, setDefaultTab] = useState<DefaultTab>(getStoredDefaultTab);
+  const [activeView, setActiveView] = useState<View>(getStoredDefaultTab);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+
+  const handleDefaultTabChange = (tab: DefaultTab) => {
+    setDefaultTab(tab);
+    localStorage.setItem(DEFAULT_TAB_KEY, tab);
+  };
 
   // Supabase data
   const {
@@ -440,11 +454,8 @@ export function MainApp({ onLogout }: MainAppProps) {
     <div className="app">
       <header className="header">
         <div className="header-top">
-          <h1>Harmsun siemenet</h1>
+          <h1>Harmsun Puutarhapäiväkirja</h1>
           <div className="header-actions">
-            <button className="btn-secondary" onClick={() => setIsChangePasswordOpen(true)}>
-              Vaihda salasana
-            </button>
             <button className="btn-logout" onClick={onLogout}>
               Kirjaudu ulos
             </button>
@@ -487,6 +498,12 @@ export function MainApp({ onLogout }: MainAppProps) {
           >
             Tilastot
           </button>
+          <button
+            className={`nav-tab ${activeView === 'settings' ? 'active' : ''}`}
+            onClick={() => setActiveView('settings')}
+          >
+            Asetukset
+          </button>
         </nav>
       </header>
 
@@ -505,23 +522,6 @@ export function MainApp({ onLogout }: MainAppProps) {
                 />
               </div>
               <div className="toolbar-right">
-                <button className="btn-secondary" onClick={() => handleExportSeeds('siemen')}>
-                  Vie CSV
-                </button>
-                <button className="btn-secondary" onClick={() => seedImportInputRef.current?.click()}>
-                  Tuo CSV
-                </button>
-                <input
-                  ref={seedImportInputRef}
-                  type="file"
-                  accept=".csv,text/csv"
-                  hidden
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleImportSeeds(file);
-                    e.target.value = '';
-                  }}
-                />
                 <button className="btn-add" onClick={() => setIsSeedFormOpen(true)}>
                   + Lisää siemen
                 </button>
@@ -557,23 +557,6 @@ export function MainApp({ onLogout }: MainAppProps) {
                 />
               </div>
               <div className="toolbar-right">
-                <button className="btn-secondary" onClick={() => handleExportSeeds('sipuli')}>
-                  Vie CSV
-                </button>
-                <button className="btn-secondary" onClick={() => bulbImportInputRef.current?.click()}>
-                  Tuo CSV
-                </button>
-                <input
-                  ref={bulbImportInputRef}
-                  type="file"
-                  accept=".csv,text/csv"
-                  hidden
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleImportSeeds(file);
-                    e.target.value = '';
-                  }}
-                />
                 <button className="btn-add" onClick={() => setIsSeedFormOpen(true)}>
                   + Lisää sipuli
                 </button>
@@ -685,6 +668,89 @@ export function MainApp({ onLogout }: MainAppProps) {
             locations={locations}
             careLogs={careLogs}
           />
+        )}
+
+        {activeView === 'settings' && (
+          <div className="settings-page">
+            <section className="settings-section">
+              <h2>Oletusvälilehti</h2>
+              <p className="settings-description">
+                Valitse kumpi välilehti avautuu ensimmäisenä kun kirjaudut sisään (esim. Sipulit istutuskaudella, Siemenet keväällä).
+              </p>
+              <div className="settings-actions">
+                <button
+                  className={`filter-btn ${defaultTab === 'seeds' ? 'active' : ''}`}
+                  onClick={() => handleDefaultTabChange('seeds')}
+                >
+                  Siemenet
+                </button>
+                <button
+                  className={`filter-btn ${defaultTab === 'bulbs' ? 'active' : ''}`}
+                  onClick={() => handleDefaultTabChange('bulbs')}
+                >
+                  Sipulit
+                </button>
+              </div>
+            </section>
+
+            <section className="settings-section">
+              <h2>Siemenet</h2>
+              <p className="settings-description">Vie siemenet varmuuskopioksi tai tuo aiemmin viety CSV-tiedosto.</p>
+              <div className="settings-actions">
+                <button className="btn-secondary" onClick={() => handleExportSeeds('siemen')}>
+                  Vie CSV
+                </button>
+                <button className="btn-secondary" onClick={() => seedImportInputRef.current?.click()}>
+                  Tuo CSV
+                </button>
+                <input
+                  ref={seedImportInputRef}
+                  type="file"
+                  accept=".csv,text/csv"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImportSeeds(file);
+                    e.target.value = '';
+                  }}
+                />
+              </div>
+            </section>
+
+            <section className="settings-section">
+              <h2>Sipulit</h2>
+              <p className="settings-description">Vie sipulit varmuuskopioksi tai tuo aiemmin viety CSV-tiedosto.</p>
+              <div className="settings-actions">
+                <button className="btn-secondary" onClick={() => handleExportSeeds('sipuli')}>
+                  Vie CSV
+                </button>
+                <button className="btn-secondary" onClick={() => bulbImportInputRef.current?.click()}>
+                  Tuo CSV
+                </button>
+                <input
+                  ref={bulbImportInputRef}
+                  type="file"
+                  accept=".csv,text/csv"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImportSeeds(file);
+                    e.target.value = '';
+                  }}
+                />
+              </div>
+            </section>
+
+            <section className="settings-section">
+              <h2>Tili</h2>
+              <p className="settings-description">Vaihda tilisi salasana.</p>
+              <div className="settings-actions">
+                <button className="btn-secondary" onClick={() => setIsChangePasswordOpen(true)}>
+                  Vaihda salasana
+                </button>
+              </div>
+            </section>
+          </div>
         )}
       </main>
 

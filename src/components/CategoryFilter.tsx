@@ -21,6 +21,11 @@ export function CategoryFilter({
     .filter((s) => s.category === CATEGORY_ANCHOR)
     .sort((a, b) => a.name.localeCompare(b.name, 'fi'));
 
+  // Kun kategoria on valittu, näytetään vain valittu (ei kaikkia), ettei rivi täytä ruutua
+  const visibleCategoryOptions = selected
+    ? categoryOptions.filter((opt) => opt.name === selected)
+    : categoryOptions;
+
   const handleCategoryClick = (category: string | null) => {
     onChange(category);
     onSubcategoryChange(null);
@@ -42,7 +47,7 @@ export function CategoryFilter({
         >
           Kaikki
         </button>
-        {categoryOptions.map((opt) => (
+        {visibleCategoryOptions.map((opt) => (
           <button
             key={opt.id}
             className={`filter-btn ${selected === opt.name ? 'active' : ''}`}

@@ -27,7 +27,7 @@ export function Login({ onSignIn }: LoginProps) {
   return (
     <div className="login-container">
       <form className="login-form" onSubmit={handleSubmit}>
-        <h1>Harmsun siemenet</h1>
+        <h1>Harmsun Puutarhapäiväkirja</h1>
         <p className="login-subtitle">Kirjaudu sisään</p>
 
         {error && <div className="login-error">{error}</div>}

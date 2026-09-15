@@ -1,6 +1,6 @@
 {
-  "name": "Harmsun siemenet",
-  "short_name": "Siemenet",
+  "name": "Harmsun Puutarhapäiväkirja",
+  "short_name": "Puutarha",
   "description": "Siementen ja kasvien hallintasovellus",
   "start_url": "/",
   "display": "standalone",

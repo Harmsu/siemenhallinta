@@ -14,7 +14,7 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: CLIENT_URL
-        value: https://siemenhallinta.netlify.app
+        value: https://harmsunsiemenet.netlify.app
       - key: SFTP_HOST
         sync: false
       - key: SFTP_PORT

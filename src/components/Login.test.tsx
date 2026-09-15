@@ -9,7 +9,7 @@ beforeEach(() => {
 describe('Login', () => {
   it('näyttää kirjautumislomakkeen', () => {
     render(<Login onSignIn={vi.fn()} />);
-    expect(screen.getByText('Harmsun siemenet')).toBeInTheDocument();
+    expect(screen.getByText('Harmsun Puutarhapäiväkirja')).toBeInTheDocument();
     expect(screen.getByText('Kirjaudu sisään')).toBeInTheDocument();
     expect(screen.getByLabelText('Sähköposti')).toBeInTheDocument();
     expect(screen.getByLabelText('Salasana')).toBeInTheDocument();
