@@ -1,4 +1,4 @@
-# Yhteenveto — Harmsun siemenet -migraatio (päivitetty 2026-09-11)
+# Yhteenveto — Harmsun Puutarhapäiväkirja (päivitetty 2026-09-16)
 
 ## ✅ Sovellus on nyt kokonaan tuotannossa
 
@@ -32,6 +32,21 @@
 - **Oletusvälilehti-asetus**: Asetuksista voi valita avautuuko Siemenet vai Sipulit ensimmäisenä kirjautuessa (kausiluontoinen käytettävyysparannus — esim. Sipulit auki istutuskaudella). Tallennetaan selaimen `localStorage`iin (`harmsu-default-tab`), per laite/selain.
 - **render.yaml-korjaus**: `CLIENT_URL` osoitti vanhaan, saavuttamattomaan `siemenhallinta.netlify.app`-osoitteeseen — korjattu oikeaan `harmsunsiemenet.netlify.app`-osoitteeseen.
 - Testattu paikallisesti SSH-tunnelin läpi (kirjautuminen, Asetukset-sivun toiminnot) ennen tuotantoon vientiä.
+
+## Päivitys 2026-09-16 — mobiilikorjaukset, poiston luotettavuus, istutuskuvat
+
+Käyttäjän tuotantotestauksessa 15.9. illalla löytämät bugit korjattu ja uusi ominaisuus lisätty, kaikki viety tuotantoon.
+
+**Korjatut bugit:**
+- **Sivu vieri vaakasuunnassa puhelimella ja yläpalkin tabit eivät näkyneet pystyasennossa** — yläpalkin tabirivi ei mahtunut yhdelle riville kapealla näytöllä ja työnsi koko sivun leviämään sivuttain. Korjattu: tabirivistä oma vieritettävä alue, sivu ei enää pääse vierimään vaakasuunnassa.
+- **Siementen poisto ei aina toiminut, laskuri ei päivittynyt** — kaksi eri syytä:
+  1. Sovellus on PWA (kotinäytölle asennettava) ja natiivi selaimen vahvistuskysely (`window.confirm`) ei näytä mitään iOS:n kotinäyttötilassa, joten poisto ei koskaan käynnistynyt. Kaikki poistotoiminnot (siemenet, sipulit, kategoriat, paikat, istutukset) käyttävät nyt sovelluksen omaa vahvistusikkunaa.
+  2. "Näytetään X / Y siementä" -laskuri laski nimittäjään vahingossa myös sipulit mukaan — korjattu.
+- **"Lisää istutus" -valikko** ei erotellut siemeniä ja sipuleita (molemmat näyttivät tekstin "Siemen") — valikko jaettu nyt selkeästi "Siemenet"- ja "Sipulit"-ryhmiin.
+- **CSV-tuonti loi duplikaatteja**, kun samaa tiedostoa tuotiin testinä useaan kertaan. Tuonti tunnistaa nyt jo listalla olevat (nimi+lajike+kategoria+tyyppi) eikä lisää niitä uudelleen. Tuotannon kannasta siivottiin tässä yhteydessä 17 vanhaa testiduplikaattia (lähinnä tulppaanisipuleita) — varmistettu ettei yksikään ollut minkään istutuksen käytössä ennen poistoa.
+
+**Uusi ominaisuus — istutuskuvat:**
+Jokaiseen istutukseen voi nyt liittää valokuvia (esim. istutushetkestä tai myöhemmästä taimivaiheesta) — eri asia kuin siemenen/sipulin oma otsikkokuva, joka pysyy ennallaan. Kuville voi antaa valinnaisen kuvatekstin ja muokata päivämäärää. Kuvat tallennetaan samalla SFTP-tavalla kuin otsikkokuvat mutta omaan `planting-photos`-alikansioon, ja ladataan sovelluksessa vasta kun käyttäjä avaa yksittäisen istutuksen kuvat-osion (ei hidasta istutuslistan peruslatausta). Kuvan poistaminen poistaa nyt myös oikeasti tiedoston palvelimelta.
 
 ## Git
 

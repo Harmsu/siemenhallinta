@@ -10,9 +10,10 @@ Siementen, kukkasipulien, istutuspaikkojen ja istutusten hallintasovellus. Seura
 - **Hoitoloki**: Kirjaa kastelut, lannoitukset ja muut hoitotoimenpiteet
 - **Kalenteri**: Näe kylvöajat ja istutusaikataulut
 - **Tilastot**: Yhteenveto istutuksista ja sadosta
-- **Asetukset**: CSV-vienti/tuonti (varmuuskopiointi), salasanan vaihto, oletuksena avautuvan välilehden valinta (Siemenet/Sipulit)
+- **Asetukset**: CSV-vienti/tuonti (varmuuskopiointi, tunnistaa ja ohittaa jo tuodut duplikaatit), salasanan vaihto, oletuksena avautuvan välilehden valinta (Siemenet/Sipulit)
+- **Istutuskuvat**: Jokaiseen istutukseen voi liittää 0-N valokuvaa (esim. istutushetkestä tai taimivaiheesta), valinnaisella kuvatekstillä ja muokattavalla päivämäärällä — eri asia kuin siemenen/sipulin oma otsikkokuva, ladataan vasta kun istutuksen kuvat-osio avataan
 - **Monikäyttäjätuki**: JWT-kirjautuminen, jokainen käyttäjä näkee vain oman datansa
-- **Kuvat**: Siementen/sipulien kuvat tallennetaan SFTP:n yli omalle palvelimelle
+- **Kuvat**: Sekä siementen/sipulien otsikkokuvat että istutusten liitekuvat tallennetaan SFTP:n yli omalle palvelimelle, omissa alikansioissaan
 
 ## Teknologiat
 
@@ -51,16 +52,19 @@ siemenhallinta/
 ├── server/                  # Express-backend
 │   ├── database.js          # PG-pool, error-handler
 │   ├── auth.js              # JWT-middleware
-│   ├── routes/               # auth/seeds/subcategories/locations/plantings/careLogs/images
-│   ├── lib/sftp.js           # Kuvien SFTP-lataus
+│   ├── routes/               # auth/seeds/subcategories/locations/plantings/careLogs/images/plantingPhotos
+│   ├── lib/sftp.js           # Kuvien SFTP-lataus (subdir-tuki: otsikkokuvat vs. istutuskuvat, poisto)
 │   ├── scripts/               # create-user.js, delete-test-user.js
 │   └── render.yaml
 ├── src/
-│   ├── components/          # React-komponentit (MainApp = pääsovellus, Asetukset-näkymä mukana)
+│   ├── components/          # React-komponentit (MainApp = pääsovellus, Asetukset-näkymä mukana,
+│   │                        #   PlantingPhotos = istutuskuvat, ConfirmDialog = poistovahvistus
+│   │                        #   - EI natiivia window.confirm():ia, ei toimi iOS-PWA:ssa)
 │   ├── api/client.ts        # Backend-API-client
 │   ├── hooks/useAuth.ts     # JWT-kirjautuminen
 │   ├── hooks/useSupabaseData.ts  # Datahook (nimi historiallinen, kutsuu nyt api.*:aa)
-│   ├── utils/seedCsv.ts     # CSV-vienti/tuonti
+│   ├── utils/seedCsv.ts     # CSV-vienti/tuonti (duplikaattisuodatus)
+│   ├── utils/image.ts       # Jaettu kuvanpakkausapufunktio
 │   └── types/index.ts       # TypeScript-tyypit
 ├── schema.sql                # Tietokantarakenne
 └── index.html
