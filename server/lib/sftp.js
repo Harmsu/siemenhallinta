@@ -12,24 +12,46 @@ function connectConfig() {
   };
 }
 
-async function uploadImage(buffer, filename) {
+function remotePath(filename, subdir) {
+  return subdir ? `${REMOTE_DIR}/${subdir}/${filename}` : `${REMOTE_DIR}/${filename}`;
+}
+
+async function ensureDir(sftp, subdir) {
+  if (!subdir) return;
+  const dir = `${REMOTE_DIR}/${subdir}`;
+  const exists = await sftp.exists(dir);
+  if (!exists) await sftp.mkdir(dir, true);
+}
+
+async function uploadImage(buffer, filename, subdir) {
   const sftp = new SftpClient();
   try {
     await sftp.connect(connectConfig());
-    await sftp.put(buffer, `${REMOTE_DIR}/${filename}`);
+    await ensureDir(sftp, subdir);
+    await sftp.put(buffer, remotePath(filename, subdir));
   } finally {
     await sftp.end();
   }
 }
 
-async function downloadImage(filename) {
+async function downloadImage(filename, subdir) {
   const sftp = new SftpClient();
   try {
     await sftp.connect(connectConfig());
-    return await sftp.get(`${REMOTE_DIR}/${filename}`);
+    return await sftp.get(remotePath(filename, subdir));
   } finally {
     await sftp.end();
   }
 }
 
-module.exports = { uploadImage, downloadImage };
+async function deleteImage(filename, subdir) {
+  const sftp = new SftpClient();
+  try {
+    await sftp.connect(connectConfig());
+    await sftp.delete(remotePath(filename, subdir));
+  } finally {
+    await sftp.end();
+  }
+}
+
+module.exports = { uploadImage, downloadImage, deleteImage };

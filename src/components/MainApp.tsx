@@ -16,6 +16,7 @@ import { CareLogForm } from './CareLogForm';
 import { Calendar } from './Calendar';
 import { Statistics } from './Statistics';
 import { ChangePasswordForm } from './ChangePasswordForm';
+import { ConfirmDialog } from './ConfirmDialog';
 
 type View = 'seeds' | 'bulbs' | 'locations' | 'plantings' | 'calendar' | 'statistics' | 'settings';
 type DefaultTab = 'seeds' | 'bulbs';
@@ -27,6 +28,14 @@ function getStoredDefaultTab(): DefaultTab {
   return stored === 'bulbs' ? 'bulbs' : 'seeds';
 }
 
+// Tunniste siemenen/sipulin sisällölliselle "samuudelle" - käytetään CSV-tuonnin
+// duplikaattisuodatukseen (nimi, lajike, kategoria, alakategoria, tyyppi)
+function seedSignature(s: { nameFi: string; variety?: string; category: string; subcategory?: string; categoryType?: string }) {
+  return [s.nameFi, s.variety, s.category, s.subcategory, s.categoryType]
+    .map((v) => (v || '').trim().toLowerCase())
+    .join('::');
+}
+
 interface MainAppProps {
   onLogout: () => void;
 }
@@ -35,6 +44,15 @@ export function MainApp({ onLogout }: MainAppProps) {
   const [defaultTab, setDefaultTab] = useState<DefaultTab>(getStoredDefaultTab);
   const [activeView, setActiveView] = useState<View>(getStoredDefaultTab);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+
+  // Poistovahvistus - oma dialogi natiivin window.confirm():n sijaan, koska se ei
+  // näytä mitään iOS:n "Lisää kotivalikkoon" -PWA-tilassa (apple-mobile-web-app-capable) -
+  // poisto näytti epäonnistuvan hiljaisesti, koska confirm() palautti aina false.
+  const [pendingConfirm, setPendingConfirm] = useState<{ message: string; onConfirm: () => void } | null>(null);
+
+  const requestConfirm = (message: string, onConfirm: () => void) => {
+    setPendingConfirm({ message, onConfirm });
+  };
 
   const handleDefaultTabChange = (tab: DefaultTab) => {
     setDefaultTab(tab);
@@ -200,15 +218,15 @@ export function MainApp({ onLogout }: MainAppProps) {
     setIsSeedFormOpen(true);
   };
 
-  const handleDeleteSeed = async (id: string) => {
-    if (window.confirm('Haluatko varmasti poistaa tämän siemenen?')) {
+  const handleDeleteSeed = (id: string) => {
+    requestConfirm('Haluatko varmasti poistaa tämän siemenen?', async () => {
       try {
         await deleteSeed(id);
       } catch (err) {
         console.error('Error deleting seed:', err);
         alert('Virhe poistettaessa siementä');
       }
-    }
+    });
   };
 
   const seedImportInputRef = useRef<HTMLInputElement>(null);
@@ -221,15 +239,26 @@ export function MainApp({ onLogout }: MainAppProps) {
 
   const handleImportSeeds = async (file: File) => {
     const knownCategories = new Set(subcategories.map((s) => `${s.category}::${s.name}`));
+    // Estää saman CSV:n toistuvan tuonnin luomasta duplikaatteja - vertaa nimeä, lajiketta,
+    // kategoriaa, alakategoriaa ja tyyppiä sekä olemassa oleviin siemeniin että jo tässä
+    // tuontierässä lisättyihin.
+    const existingSignatures = new Set(seeds.map(seedSignature));
 
     try {
       const text = await file.text();
       const rows = parseSeedsCsv(text);
       let importedSeeds = 0;
       let importedBulbs = 0;
+      let skippedDuplicates = 0;
 
       for (const row of rows) {
         if (!row.nameFi || !row.category) continue;
+
+        const signature = seedSignature(row);
+        if (existingSignatures.has(signature)) {
+          skippedDuplicates++;
+          continue;
+        }
 
         const anchor = row.categoryType === 'sipuli' ? BULB_TYPE_ANCHOR : CATEGORY_ANCHOR;
         if (!knownCategories.has(`${anchor}::${row.category}`)) {
@@ -242,11 +271,15 @@ export function MainApp({ onLogout }: MainAppProps) {
         }
 
         await addSeed(row);
+        existingSignatures.add(signature);
         if (row.categoryType === 'sipuli') importedBulbs++;
         else importedSeeds++;
       }
 
-      alert(`Tuotu ${importedSeeds} siementä ja ${importedBulbs} sipulia.`);
+      const skippedText = skippedDuplicates > 0
+        ? ` Ohitettu ${skippedDuplicates} kpl, koska samanlainen (nimi, lajike, kategoria) oli jo listalla.`
+        : '';
+      alert(`Tuotu ${importedSeeds} siementä ja ${importedBulbs} sipulia.${skippedText}`);
     } catch (err) {
       console.error('Error importing CSV:', err);
       alert('Virhe CSV-tiedoston tuonnissa. Tarkista tiedoston muoto.');
@@ -264,7 +297,7 @@ export function MainApp({ onLogout }: MainAppProps) {
     setIsSeedFormOpen(true);
   };
 
-  const handleDeleteSubcategory = async (id: string) => {
+  const handleDeleteSubcategory = (id: string) => {
     const subcategory = subcategories.find((s) => s.id === id);
     if (!subcategory) return;
 
@@ -275,14 +308,14 @@ export function MainApp({ onLogout }: MainAppProps) {
       return;
     }
 
-    if (window.confirm(`Haluatko varmasti poistaa alakategorian "${subcategory.name}"?`)) {
+    requestConfirm(`Haluatko varmasti poistaa alakategorian "${subcategory.name}"?`, async () => {
       try {
         await deleteSubcategory(id);
       } catch (err) {
         console.error('Error deleting subcategory:', err);
         alert('Virhe poistettaessa alakategoriaa');
       }
-    }
+    });
   };
 
   // Luo istutus suoraan siemenkortista
@@ -325,15 +358,15 @@ export function MainApp({ onLogout }: MainAppProps) {
     setIsLocationFormOpen(true);
   };
 
-  const handleDeleteLocation = async (id: string) => {
-    if (window.confirm('Haluatko varmasti poistaa tämän istutuspaikan?')) {
+  const handleDeleteLocation = (id: string) => {
+    requestConfirm('Haluatko varmasti poistaa tämän istutuspaikan?', async () => {
       try {
         await deleteLocation(id);
       } catch (err) {
         console.error('Error deleting location:', err);
         alert('Virhe poistettaessa paikkaa');
       }
-    }
+    });
   };
 
   // Istutusten käsittelijät
@@ -359,15 +392,15 @@ export function MainApp({ onLogout }: MainAppProps) {
     setIsPlantingFormOpen(true);
   };
 
-  const handleDeletePlanting = async (id: string) => {
-    if (window.confirm('Haluatko varmasti poistaa tämän istutuksen?')) {
+  const handleDeletePlanting = (id: string) => {
+    requestConfirm('Haluatko varmasti poistaa tämän istutuksen?', async () => {
       try {
         await deletePlanting(id);
       } catch (err) {
         console.error('Error deleting planting:', err);
         alert('Virhe poistettaessa istutusta');
       }
-    }
+    });
   };
 
   // Kopioi istutus ensi vuodelle
@@ -529,7 +562,7 @@ export function MainApp({ onLogout }: MainAppProps) {
             </div>
 
             <p className="item-count">
-              Näytetään {filteredSeeds.length} / {seeds.length} siementä
+              Näytetään {filteredSeeds.length} / {seeds.filter((s) => s.categoryType === 'siemen').length} siementä
             </p>
 
             <SeedList
@@ -646,6 +679,7 @@ export function MainApp({ onLogout }: MainAppProps) {
               onAddCareLog={handleAddCareLog}
               onDeleteCareLog={handleDeleteCareLog}
               onCopyToNextYear={handleCopyToNextYear}
+              requestConfirm={requestConfirm}
             />
           </>
         )}
@@ -809,6 +843,18 @@ export function MainApp({ onLogout }: MainAppProps) {
       )}
 
       {isChangePasswordOpen && <ChangePasswordForm onClose={() => setIsChangePasswordOpen(false)} />}
+
+      {pendingConfirm && (
+        <ConfirmDialog
+          message={pendingConfirm.message}
+          onConfirm={() => {
+            const { onConfirm } = pendingConfirm;
+            setPendingConfirm(null);
+            onConfirm();
+          }}
+          onCancel={() => setPendingConfirm(null)}
+        />
+      )}
     </div>
   );
 }

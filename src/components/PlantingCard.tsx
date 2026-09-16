@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Planting, CareLogEntry, Seed, PlantingLocation } from '../types';
 import { PLANTING_STATUS_LABELS, CARE_TYPE_LABELS } from '../types';
+import { PlantingPhotos } from './PlantingPhotos';
 import './PlantingCard.css';
 
 interface PlantingCardProps {
@@ -13,6 +14,7 @@ interface PlantingCardProps {
   onAddCareLog: (plantingId: string) => void;
   onDeleteCareLog: (id: string) => void;
   onCopyToNextYear: (planting: Planting) => void;
+  requestConfirm: (message: string, onConfirm: () => void) => void;
 }
 
 export function PlantingCard({
@@ -25,8 +27,10 @@ export function PlantingCard({
   onAddCareLog,
   onDeleteCareLog,
   onCopyToNextYear,
+  requestConfirm,
 }: PlantingCardProps) {
   const [showLogs, setShowLogs] = useState(false);
+  const [showPhotos, setShowPhotos] = useState(false);
 
   const plantedDate = new Date(planting.plantedDate).toLocaleDateString('fi-FI');
   const seedName = seed ? `${seed.nameFi}${seed.variety ? ` (${seed.variety})` : ''}` : 'Tuntematon siemen';
@@ -84,6 +88,21 @@ export function PlantingCard({
       </div>
 
       {planting.notes && <p className="planting-notes">{planting.notes}</p>}
+
+      <div className="photos-section">
+        <button
+          className="btn-toggle-logs"
+          onClick={() => setShowPhotos(!showPhotos)}
+        >
+          {showPhotos ? '▼' : '▶'} Kuvia istutuksesta
+        </button>
+
+        {showPhotos && (
+          <div className="photos-section-content">
+            <PlantingPhotos plantingId={planting.id} requestConfirm={requestConfirm} />
+          </div>
+        )}
+      </div>
 
       <div className="care-log-section">
         <div className="care-log-header">

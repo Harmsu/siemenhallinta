@@ -96,3 +96,19 @@ CREATE TABLE care_logs (
 );
 
 CREATE INDEX idx_care_logs_user ON care_logs(user_id);
+
+-- Istutuksen aikaiset/myöhemmät valokuvat (eri asia kuin siemenen/sipulin otsikkokuva
+-- seeds.image_url yllä) - nolla tai useampi kuva per istutus, ladataan omaan SFTP-
+-- alikansioon ("planting-photos") jotta ne pysyvät erillään otsikkokuvista.
+CREATE TABLE planting_photos (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES users(id),
+  planting_id UUID NOT NULL REFERENCES plantings(id) ON DELETE CASCADE,
+  image_url   TEXT NOT NULL,
+  caption     TEXT,
+  -- TEXT (YYYY-MM-DD), sama syy kuin plantings.planted_date yllä
+  taken_at    TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_planting_photos_planting ON planting_photos(planting_id);

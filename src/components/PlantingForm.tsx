@@ -62,25 +62,42 @@ export function PlantingForm({ planting, seeds, locations, initialDate, onSave, 
     return label;
   };
 
+  const sortByLabel = (a: Seed, b: Seed) => getSeedLabel(a).localeCompare(getSeedLabel(b), 'fi');
+  const seedOptions = seeds.filter((s) => s.categoryType !== 'sipuli').sort(sortByLabel);
+  const bulbOptions = seeds.filter((s) => s.categoryType === 'sipuli').sort(sortByLabel);
+
   return (
     <div className="planting-form-overlay">
       <form className="planting-form" onSubmit={handleSubmit}>
         <h2>{isEditing ? 'Muokkaa istutusta' : 'Lisää uusi istutus'}</h2>
 
         <div className="form-group">
-          <label htmlFor="seedId">Siemen</label>
+          <label htmlFor="seedId">Siemen tai sipuli</label>
           <select
             id="seedId"
             value={seedId}
             onChange={(e) => setSeedId(e.target.value)}
             required
           >
-            <option value="">Valitse siemen...</option>
-            {seeds.map((seed) => (
-              <option key={seed.id} value={seed.id}>
-                {getSeedLabel(seed)}
-              </option>
-            ))}
+            <option value="">Valitse siemen tai sipuli...</option>
+            {seedOptions.length > 0 && (
+              <optgroup label="Siemenet">
+                {seedOptions.map((seed) => (
+                  <option key={seed.id} value={seed.id}>
+                    {getSeedLabel(seed)}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {bulbOptions.length > 0 && (
+              <optgroup label="Sipulit">
+                {bulbOptions.map((seed) => (
+                  <option key={seed.id} value={seed.id}>
+                    {getSeedLabel(seed)}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </div>
 

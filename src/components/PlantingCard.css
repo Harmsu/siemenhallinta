@@ -120,6 +120,16 @@
   border-radius: 6px;
 }
 
+.photos-section {
+  border-top: 1px solid #eee;
+  padding-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.photos-section-content {
+  margin-top: 0.5rem;
+}
+
 .care-log-section {
   border-top: 1px solid #eee;
   padding-top: 0.75rem;

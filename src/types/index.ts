@@ -131,6 +131,17 @@ export const PLANTING_STATUS_LABELS: Record<PlantingStatus, string> = {
   failed: 'Epäonnistunut',
 };
 
+// Istutuksen liitekuva (esim. istutushetkestä tai taimivaiheesta) - eri asia kuin
+// siemenen/sipulin oma otsikkokuva (Seed.imageUrl). Yhdellä istutuksella voi olla 0-N kuvaa.
+export interface PlantingPhoto {
+  id: string;
+  plantingId: string;
+  imageUrl: string;
+  caption: string;
+  takenAt: string;
+  createdAt: string;
+}
+
 // Hoitoloki
 
 export interface CareLogEntry {

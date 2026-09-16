@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { Seed, Subcategory, CategoryType } from '../types';
 import { getCategoryLabel, MONTH_NAMES, BULB_TYPE_ANCHOR, CATEGORY_ANCHOR } from '../types';
 import { api } from '../api/client';
+import { compressImageToBlob } from '../utils/image';
 import './SeedForm.css';
 
 interface SeedFormProps {
@@ -10,38 +11,8 @@ interface SeedFormProps {
   subcategories: Subcategory[];
   onSave: (seed: Omit<Seed, 'id' | 'createdAt'> & { id?: string }) => void;
   onAddSubcategory: (category: string, name: string) => Promise<Subcategory>;
-  onDeleteSubcategory: (id: string) => Promise<void>;
+  onDeleteSubcategory: (id: string) => void;
   onCancel: () => void;
-}
-
-async function compressImageToBlob(file: File, maxWidth = 800, quality = 0.7): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let { width, height } = img;
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width;
-          width = maxWidth;
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) { reject(new Error('Canvas context not available')); return; }
-        ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob((blob) => {
-          if (blob) resolve(blob);
-          else reject(new Error('Failed to create blob'));
-        }, 'image/jpeg', quality);
-      };
-      img.onerror = () => reject(new Error('Failed to load image'));
-      img.src = e.target?.result as string;
-    };
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsDataURL(file);
-  });
 }
 
 export function SeedForm({ seed, defaultCategoryType, subcategories, onSave, onAddSubcategory, onDeleteSubcategory, onCancel }: SeedFormProps) {

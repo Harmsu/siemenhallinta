@@ -1,4 +1,4 @@
-import type { Seed, PlantingLocation, Planting, CareLogEntry, Subcategory } from '../types';
+import type { Seed, PlantingLocation, Planting, CareLogEntry, Subcategory, PlantingPhoto } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 const API_ORIGIN = BASE_URL.replace(/\/api\/?$/, '');
@@ -83,4 +83,20 @@ export const api = {
     const { url } = await request<{ url: string }>('/images', { method: 'POST', body: formData });
     return `${API_ORIGIN}${url}`;
   },
+
+  // Istutuksen liitekuvat (erillään siementen/sipulien otsikkokuvasta)
+  uploadPlantingPhoto: async (blob: Blob) => {
+    const formData = new FormData();
+    formData.append('image', blob, 'image.jpg');
+    const { url } = await request<{ url: string }>('/images/planting-photos', { method: 'POST', body: formData });
+    return `${API_ORIGIN}${url}`;
+  },
+  getPlantingPhotos: (plantingId: string) =>
+    request<PlantingPhoto[]>(`/planting-photos?plantingId=${encodeURIComponent(plantingId)}`),
+  createPlantingPhoto: (photo: Omit<PlantingPhoto, 'id' | 'createdAt'>) =>
+    request<PlantingPhoto>('/planting-photos', { method: 'POST', body: JSON.stringify(photo) }),
+  updatePlantingPhoto: (id: string, data: { caption: string; takenAt: string }) =>
+    request<PlantingPhoto>(`/planting-photos/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletePlantingPhoto: (id: string) =>
+    request<{ success: boolean }>(`/planting-photos/${id}`, { method: 'DELETE' }),
 };

@@ -12,6 +12,7 @@ interface PlantingListProps {
   onAddCareLog: (plantingId: string) => void;
   onDeleteCareLog: (id: string) => void;
   onCopyToNextYear: (planting: Planting) => void;
+  requestConfirm: (message: string, onConfirm: () => void) => void;
 }
 
 export function PlantingList({
@@ -24,6 +25,7 @@ export function PlantingList({
   onAddCareLog,
   onDeleteCareLog,
   onCopyToNextYear,
+  requestConfirm,
 }: PlantingListProps) {
   if (plantings.length === 0) {
     return (
@@ -51,6 +53,7 @@ export function PlantingList({
           onAddCareLog={onAddCareLog}
           onDeleteCareLog={onDeleteCareLog}
           onCopyToNextYear={onCopyToNextYear}
+          requestConfirm={requestConfirm}
         />
       ))}
     </div>
